@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>RVR 一体化计算器 — Step1像素推导 + Step2分界线 · 2D/3D切换</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jsxgraph/1.8.0/jsxgraph.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jsxgraph/1.8.0/jsxgraphcore.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:#0d1117;color:#c9d1d9;overflow:hidden;height:100vh}
+    .app{display:flex;flex-direction:column;height:100vh}
+
+    /* 顶栏 */
+    .topbar{display:flex;align-items:center;gap:12px;padding:8px 16px;background:#161b22;border-bottom:1px solid #30363d}
+    .topbar h1{font-size:16px;color:#58a6ff;white-space:nowrap}
+    .view-toggle{display:flex;border-radius:6px;overflow:hidden;border:1px solid #30363d;margin-left:auto}
+    .view-toggle button{padding:6px 16px;border:none;cursor:pointer;font-size:13px;font-family:inherit;background:#21262d;color:#8b949e;transition:.2s}
+    .view-toggle button.active{background:#1f6feb;color:#fff}
+    .view-toggle button:first-child{border-radius:5px 0 0 5px}
+    .view-toggle button:last-child{border-radius:0 5px 5px 0}
+    .badge{font-size:10px;background:#238636;color:#fff;border-radius:10px;padding:2px 8px;margin-left:8px}
+
+    /* 主体 */
+    .main{display:flex;flex:1;min-height:0}
+    .viz-panel{flex:1;position:relative;min-width:0}
+    .viz-panel>div{position:absolute;inset:0;border-radius:0}
+    #view2D,#view3D{width:100%;height:100%}
+    #view3D{background:#0a0a14}
+
+    /* 右侧面板 */
+    .panel{width:420px;overflow-y:auto;background:#161b22;border-left:1px solid #30363d;display:flex;flex-direction:column;gap:12px;padding:12px}
+    .panel::-webkit-scrollbar{width:6px}
+    .panel::-webkit-scrollbar-thumb{background:#30363d;border-radius:3px}
+
+    .card{background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:12px}
+    .card h3{color:#58a6ff;font-size:14px;margin-bottom:8px}
+    .card h4{color:#f0883e;font-size:12px;margin-bottom:6px}
+
+    .slider-group{margin-bottom:12px}
+    .slider-group label{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#8b949e;margin-bottom:4px}
+    .slider-group label .val{color:#7ee787;font-weight:600}
+    .slider-row{display:flex;align-items:center;gap:8px}
+    .slider-row input[type=range]{flex:1;-webkit-appearance:none;height:6px;background:#21262d;border-radius:3px;outline:none}
+    .slider-row input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;background:#58a6ff;border-radius:50%;cursor:pointer}
+    .slider-row input[type=number]{width:68px;background:#0d1117;border:1px solid #30363d;border-radius:5px;color:#7ee787;font-size:12px;font-family:Consolas,monospace;padding:3px 6px;text-align:right;outline:none}
+    .slider-row input[type=number]:focus{border-color:#58a6ff}
+    .slider-row input[type=number]::-webkit-inner-spin-button,.slider-row input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none}
+
+    .data-row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #21262d;font-size:12px}
+    .data-row .label{color:#8b949e}
+    .data-row .value{color:#7ee787;font-weight:600;font-family:Consolas,monospace}
+    .data-row .value.hl{color:#f0883e}
+    .data-row .value.bl{color:#58a6ff}
+
+    .formula{background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:8px 12px;margin:4px 0;font-family:Consolas,monospace;font-size:11px;color:#7ee787;white-space:pre;overflow-x:auto;line-height:1.5}
+    .formula .cmt{color:#8b949e;font-style:italic}
+
+    .tab-row{display:flex;gap:4px;margin-bottom:8px}
+    .tab-row button{padding:4px 10px;border:1px solid #30363d;border-radius:4px;background:transparent;color:#8b949e;cursor:pointer;font-size:11px;font-family:inherit;transition:.2s}
+    .tab-row button.active{background:#1f6feb;color:#fff;border-color:#1f6feb}
+
+    .note{background:#1a2332;border-left:3px solid #58a6ff;border-radius:0 6px 6px 0;padding:8px 12px;font-size:12px;color:#8b949e}
+
+    button.apply{background:#238636;color:#fff;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px;font-family:inherit;width:100%}
+    button.apply:hover{background:#2ea043}
+    button.reset{background:#21262d;color:#8b949e;border:1px solid #30363d;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px;font-family:inherit;width:100%}
+
+    .btn-row{display:flex;gap:8px}
+  </style>
+</head>
+<body>
+<div class="app">
+  <!-- 顶栏 -->
+  <div class="topbar">
+    <h1>RVR 一体化计算器<span class="badge">v3.0</span></h1>
+    <span style="font-size:12px;color:#8b949e">Step 1 像素推导 + Step 2 分界线</span>
+    <div class="view-toggle">
+      <button id="btn2D" class="active" onclick="switchView('2d')">📐 二维剖面</button>
+      <button id="btn3D" onclick="switchView('3d')">🌐 三维场景</button>
+    </div>
+  </div>
+
+  <!-- 主体 -->
+  <div class="main">
+    <!-- 可视化区 -->
+    <div class="viz-panel">
+      <div id="view2D" style="display:block"><div id="jxgbox" style="width:100%;height:100%"></div></div>
+      <div id="view3D" style="display:none"></div>
+    </div>
+
+    <!-- 右侧面板 -->
+    <div class="panel" id="infoPanel">
+      <!-- 参数输入 -->
+      <div class="card">
+        <h3>参数输入</h3>
+        <div class="slider-group">
+          <label>直径 D <span style="color:#8b949e;font-size:11px">m（3 ~ 20）</span></label>
+          <div class="slider-row">
+            <input type="range" id="sliderD" min="3" max="20" step="0.001" value="7.944" oninput="syncFromSlider('D')">
+            <input type="number" id="numD" min="3" max="20" step="0.001" value="7.944" onchange="syncFromNumber('D')">
+          </div>
+        </div>
+        <div class="slider-group">
+          <label>圆柱高 h <span style="color:#8b949e;font-size:11px">m（1 ~ 8）</span></label>
+          <div class="slider-row">
+            <input type="range" id="sliderH" min="1" max="8" step="0.01" value="2.88" oninput="syncFromSlider('H')">
+            <input type="number" id="numH" min="1" max="8" step="0.01" value="2.88" onchange="syncFromNumber('H')">
+          </div>
+        </div>
+        <div class="slider-group">
+          <label>像素间距 p <span style="color:#8b949e;font-size:11px">mm（1 ~ 5）</span></label>
+          <div class="slider-row">
+            <input type="range" id="sliderP" min="1" max="5" step="0.1" value="2.0" oninput="syncFromSlider('P')">
+            <input type="number" id="numP" min="1" max="5" step="0.1" value="2.0" onchange="syncFromNumber('P')">
+          </div>
+        </div>
+        <div class="slider-group">
+          <label>相机高度 h_cam <span style="color:#8b949e;font-size:11px">m（0.3 ~ 2.5）</span></label>
+          <div class="slider-row">
+            <input type="range" id="sliderCam" min="0.3" max="2.5" step="0.01" value="1.50" oninput="syncFromSlider('Cam')">
+            <input type="number" id="numCam" min="0.3" max="2.5" step="0.01" value="1.50" onchange="syncFromNumber('Cam')">
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="reset" onclick="resetParams()">重置默认</button>
+          <button class="apply" onclick="applyParams()">刷新可视化</button>
+        </div>
+      </div>
+
+      <!-- 公式选项卡 -->
+      <div class="card" style="flex:1;min-height:0;overflow-y:auto">
+        <h3>公式与结果</h3>
+        <div class="tab-row">
+          <button id="tabAll" class="active" onclick="switchTab('all')">全部</button>
+          <button id="tabS1" onclick="switchTab('s1')">Step 1</button>
+          <button id="tabS2" onclick="switchTab('s2')">Step 2</button>
+        </div>
+        <div id="formulaContainer"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ==================== 状态管理 ====================
+var currentView = '2d';
+var currentTab = 'all';
+var board = null;
+var threeState = null;
+
+function getParams() {
+  return {
+    D: parseFloat(document.getElementById('numD').value) || 7.944,
+    h: parseFloat(document.getElementById('numH').value) || 2.88,
+    p: (parseFloat(document.getElementById('numP').value) || 2.0) / 1000, // mm → m
+    h_cam: parseFloat(document.getElementById('numCam').value) || 1.50,
+    R: function() { return this.D / 2; }
+  };
+}
+
+// 滑块 → 同步到数字框
+function syncFromSlider(key) {
+  var slider = document.getElementById('slider' + key);
+  var num = document.getElementById('num' + key);
+  num.value = slider.value;
+  onSliderChange();
+}
+
+// 数字框 → 同步到滑块（带范围钳制）
+function syncFromNumber(key) {
+  var num = document.getElementById('num' + key);
+  var slider = document.getElementById('slider' + key);
+  var v = parseFloat(num.value);
+  var mn = parseFloat(slider.min), mx = parseFloat(slider.max);
+  if (isNaN(v)) return;
+  v = Math.max(mn, Math.min(mx, v));
+  num.value = v;
+  slider.value = v;
+  onSliderChange();
+}
+
+function computeAll(P) {
+  var R = P.D / 2;
+  var p = P.p;
+  var h = P.h;
+  var hc = P.h_cam;
+
+  // Step 1: 像素推导
+  var C = Math.PI * P.D;
+  var Nh = Math.round(C / p);
+  var Nv = Math.round(Nh / 2);
+  var NvHemi = Math.round(Nv / 2);
+  var NvWall = Math.round(h / p);
+  var Ngnd = Math.round(P.D / p);
+  var NhStr = Nh.toLocaleString();
+  var NvStr = Nv.toLocaleString();
+  var NgndStr = Ngnd.toLocaleString();
+
+  // Step 2: 分界线
+  var phiTopRad = Math.atan((h - hc) / R);
+  var phiBotRad = Math.atan(-hc / R);
+  var phiTopDeg = phiTopRad * 180 / Math.PI;
+  var phiBotDeg = phiBotRad * 180 / Math.PI;
+  var rowTop = Math.round(Nv * (90 - phiTopDeg) / 180);
+  var rowBot = Math.round(Nv * (90 - phiBotDeg) / 180);
+  var rowHorizon = Math.round(Nv / 2);
+
+  // 地面FOV
+  var fovRad = 2 * Math.atan(R / hc);
+  var fovDeg = fovRad * 180 / Math.PI;
+  var fl = 36 / (2 * Math.tan(fovRad / 2));
+
+  // 区域统计
+  var rowsHemi = rowTop;
+  var rowsWall = rowBot - rowTop;
+  var rowsGround = Nv - rowBot;
+
+  return {
+    R: R, C: C, Nh: Nh, Nv: Nv, NvHemi: NvHemi, NvWall: NvWall, Ngnd: Ngnd,
+    NhStr: NhStr, NvStr: NvStr, NgndStr: NgndStr,
+    phiTopRad: phiTopRad, phiBotRad: phiBotRad,
+    phiTopDeg: phiTopDeg, phiBotDeg: phiBotDeg,
+    rowTop: rowTop, rowBot: rowBot, rowHorizon: rowHorizon,
+    fovRad: fovRad, fovDeg: fovDeg, fl: fl,
+    rowsHemi: rowsHemi, rowsWall: rowsWall, rowsGround: rowsGround
+  };
+}
+
+function formatNum(n, d) { return n.toFixed(d); }
+
+// ==================== 视图切换 ====================
+function switchView(v) {
+  currentView = v;
+  document.getElementById('btn2D').className = v === '2d' ? 'active' : '';
+  document.getElementById('btn3D').className = v === '3d' ? 'active' : '';
+  document.getElementById('view2D').style.display = v === '2d' ? 'block' : 'none';
+  document.getElementById('view3D').style.display = v === '3d' ? 'block' : 'none';
+
+  if (v === '2d') {
+    if (board) { JXG.JSXGraph.freeBoard(board); board = null; }
+    draw2D();
+  } else {
+    if (board) { JXG.JSXGraph.freeBoard(board); board = null; }
+    draw3D();
+  }
+}
+
+// ==================== 选项卡切换 ====================
+function switchTab(t) {
+  currentTab = t;
+  document.getElementById('tabAll').className = t === 'all' ? 'active' : '';
+  document.getElementById('tabS1').className = t === 's1' ? 'active' : '';
+  document.getElementById('tabS2').className = t === 's2' ? 'active' : '';
+  updateFormulas();
+}
+
+// ==================== 参数变化 ====================
+function onSliderChange() {
+  updateFormulas();
+}
+
+function applyParams() {
+  onSliderChange();
+  switchView(currentView);
+}
+
+function resetParams() {
+  var defaults = { D: '7.944', H: '2.88', P: '2.0', Cam: '1.50' };
+  for (var k in defaults) {
+    document.getElementById('slider' + k).value = defaults[k];
+    document.getElementById('num' + k).value = defaults[k];
+  }
+  onSliderChange();
+  switchView(currentView);
+}
+
+// ==================== 公式面板更新 ====================
+function updateFormulas() {
+  var P = getParams();
+  var D = P.D, h = P.h, pmm = P.p * 1000, hc = P.h_cam;
+  var C = computeAll(P);
+  var R = C.R;
+
+  var html = '';
+
+  if (currentTab === 'all' || currentTab === 's1') {
+    html += '<h4>Step 1 — 物理尺寸 → 像素规格</h4>';
+    html += '<div class="formula"><span class="cmt">// 基础物理量</span>\n';
+    html += 'D = ' + formatNum(D,3) + ' m    R = D/2 = ' + formatNum(R,3) + ' m    h = ' + formatNum(h,2) + ' m    p = ' + formatNum(pmm,1) + ' mm</div>';
+    html += '<div class="formula"><span class="cmt">// S1-1: 圆柱周长</span>\n';
+    html += 'C = π × D = π × ' + formatNum(D,3) + ' = ' + formatNum(C.C,3) + ' m</div>';
+    html += '<div class="formula"><span class="cmt">// S1-2: 水平总像素</span>\n';
+    html += 'N_h = C / p = ' + formatNum(C.C,3) + ' / ' + formatNum(pmm/1000,4) + ' = <strong>' + C.NhStr + ' px</strong></div>';
+    html += '<div class="formula"><span class="cmt">// S1-3: 全景图垂直像素（2:1画幅）</span>\n';
+    html += 'N_v = N_h / 2 = <strong>' + C.NvStr + ' px</strong></div>';
+    html += '<div class="formula"><span class="cmt">// S1-4: 半球垂直像素</span>\n';
+    html += 'N_v_hemi = N_v / 2 = <strong>' + C.NvHemi.toLocaleString() + ' px</strong></div>';
+    html += '<div class="formula"><span class="cmt">// S1-5: 墙面垂直像素</span>\n';
+    html += 'N_v_wall = h / p = ' + formatNum(h,2) + ' / ' + formatNum(pmm/1000,4) + ' = <strong>' + C.NvWall.toLocaleString() + ' px</strong></div>';
+    html += '<div class="formula"><span class="cmt">// S1-6: 地面像素（正方形）</span>\n';
+    html += 'N_ground = D / p = ' + formatNum(D,3) + ' / ' + formatNum(pmm/1000,4) + ' = <strong>' + C.NgndStr + ' px</strong></div>';
+
+    html += '<div class="data-row"><span class="label">全景图规格</span><span class="value bl">' + C.NhStr + ' × ' + C.NvStr + ' px</span></div>';
+    html += '<div class="data-row"><span class="label">地面渲染规格</span><span class="value hl">' + C.NgndStr + ' × ' + C.NgndStr + ' px</span></div>';
+    html += '<div class="data-row"><span class="label">有效像素总数</span><span class="value">≈ ' + ((C.Nh*C.Nv/1e6).toFixed(0)) + ' Mpx</span></div>';
+  }
+
+  if ((currentTab === 'all' && C.Nv < 20000) || currentTab === 's2') {
+    if (currentTab === 'all') html += '<hr style="border-color:#30363d;margin:10px 0">';
+    html += '<h4>Step 2 — 分界线 & 相机参数</h4>';
+    html += '<div class="formula"><span class="cmt">// S2-1: 半球-墙面分界仰角</span>\n';
+    html += 'φ_top = arctan((h-h_cam)/R) = arctan(' + formatNum(h-hc,2) + '/' + formatNum(R,3) + ') = <strong>+' + formatNum(C.phiTopDeg,2) + '°</strong></div>';
+    html += '<div class="formula"><span class="cmt">// S2-2: 墙面-地面分界俯角</span>\n';
+    html += 'φ_bot = arctan(-h_cam/R) = arctan(-' + formatNum(hc,2) + '/' + formatNum(R,3) + ') = <strong>' + formatNum(C.phiBotDeg,2) + '°</strong></div>';
+    html += '<div class="formula"><span class="cmt">// S2-3: 等距圆柱投影映射 (row = Nv×(90°-φ)/180°)</span>\n';
+    html += 'row(φ) = ' + C.NvStr + ' × (90° - φ) / 180°</div>';
+    html += '<div class="formula"><span class="cmt">// S2-4: 分界线行号</span>\n';
+    html += 'Row_top(半球→墙) = ' + C.NvStr + '×(90-(' + formatNum(C.phiTopDeg,2) + '))/180 = <strong>Row ' + C.rowTop.toLocaleString() + '</strong>\n';
+    html += 'Row_bot(墙→地面) = ' + C.NvStr + '×(90-(' + formatNum(C.phiBotDeg,2) + '))/180 = <strong>Row ' + C.rowBot.toLocaleString() + '</strong></div>';
+    html += '<div class="formula"><span class="cmt">// S2-5: 地面相机FOV</span>\n';
+    html += 'FOV_ground = 2×arctan(R/h_cam) = 2×arctan(' + formatNum(R,3) + '/' + formatNum(hc,2) + ') = <strong>' + formatNum(C.fovDeg,2) + '°</strong></div>';
+    html += '<div class="formula"><span class="cmt">// S2-6: 等效焦距（36mm门）</span>\n';
+    html += 'f = 36/(2×tan(FOV/2)) = <strong>' + formatNum(C.fl,2) + ' mm</strong></div>';
+
+    html += '<div class="data-row"><span class="label">半球-墙面分界</span><span class="value bl">Row 0 ~ ' + C.rowTop.toLocaleString() + ' (' + C.rowsHemi.toLocaleString() + '行, ' + formatNum(C.rowsHemi/C.Nv*100,1) + '%)</span></div>';
+    html += '<div class="data-row"><span class="label">墙面区</span><span class="value hl">Row ' + C.rowTop.toLocaleString() + ' ~ ' + C.rowBot.toLocaleString() + ' (' + C.rowsWall.toLocaleString() + '行, ' + formatNum(C.rowsWall/C.Nv*100,1) + '%)</span></div>';
+    html += '<div class="data-row"><span class="label">地面区</span><span class="value">Row ' + C.rowBot.toLocaleString() + ' ~ ' + C.NvStr + ' (' + C.rowsGround.toLocaleString() + '行, ' + formatNum(C.rowsGround/C.Nv*100,1) + '%)</span></div>';
+    html += '<div class="data-row"><span class="label">地面相机FOV</span><span class="value bl">' + formatNum(C.fovDeg,2) + '°</span></div>';
+    html += '<div class="data-row"><span class="label">PPD (角分辨率)</span><span class="value">' + formatNum(C.Nh/360,1) + ' px/°</span></div>';
+  }
+
+  if (C.Nv >= 20000 && (currentTab === 's2' || currentTab === 'all')) {
+    html += '<div class="note"><strong>注意：</strong>当前参数下全景图超过20,000行，Step 2结果在面板中折叠以节省空间。点击"应用"或切换视图可正常渲染。</div>';
+  }
+
+  document.getElementById('formulaContainer').innerHTML = html;
+}
+
+// ==================== 2D JSXGraph 视图 ====================
+function draw2D() {
+  var P = getParams();
+  var C = computeAll(P);
+  var R = C.R, h = P.h, hc = P.h_cam;
+  var R_big = R * 1.9;
+
+  board = JXG.JSXGraph.initBoard('jxgbox', {
+    boundingbox: [-R_big - 2, h + R + 1.2, R_big + 2, -1.2],
+    axis: true,
+    grid: false,
+    keepAspectRatio: true,
+    showCopyright: false,
+    pan: { enabled: true },
+    zoom: { enabled: true }
+  });
+
+  // 大球
+  board.create('circle', [[0, hc], R_big], {
+    strokeColor: '#58a6ff', strokeWidth: 1.5, dash: 3, fillColor: '#58a6ff', fillOpacity: 0.02, name: ''
+  });
+  board.create('text', [R_big - 0.8, hc + R_big/2, '大球\n(全景图域)'], {fontSize:10,color:'#58a6ff',anchorX:'right'});
+
+  // 地面
+  board.create('segment', [[-R, 0], [R, 0]], {strokeColor:'#f85149',strokeWidth:4,name:''});
+  board.create('text', [0, -0.3, '地面 z=0  D=' + formatNum(P.D,3) + 'm'], {fontSize:10,color:'#f85149',anchorX:'middle'});
+
+  // 墙面
+  board.create('segment', [[-R, 0], [-R, h]], {strokeColor:'#3fb950',strokeWidth:5,name:''});
+  board.create('segment', [[R, 0], [R, h]], {strokeColor:'#3fb950',strokeWidth:5,name:''});
+  board.create('text', [-R-0.4, h/2, '墙面\nh='+formatNum(h,2)+'m'], {fontSize:10,color:'#3fb950',anchorX:'right'});
+
+  // 半球
+  board.create('curve', [
+    function(t) { return R * Math.cos(t); },
+    function(t) { return h + R * Math.sin(t); },
+    0, Math.PI
+  ], {strokeColor:'#f0883e',strokeWidth:4,name:''});
+  board.create('text', [0, h+R+0.3, '半球 R='+formatNum(R,3)+'m'], {fontSize:10,color:'#f0883e',anchorX:'middle'});
+
+  // 相机
+  board.create('point', [0, hc], {name:'C',size:7,face:'o',strokeColor:'#ffa657',fillColor:'#ffa657',
+    label:{fontSize:13,color:'#ffa657',offset:[-12,5],anchorX:'right'}});
+  board.create('text', [-0.15, hc+0.2, '(0,'+formatNum(hc,2)+')'], {fontSize:9,color:'#ffa657',anchorX:'right'});
+
+  // 分界射线
+  var phiTop = C.phiTopRad, phiBot = C.phiBotRad;
+  var extTop = R + 2.5, extBot = R + 2.5;
+  board.create('segment', [[0, hc], [extTop, hc + extTop * Math.tan(phiTop)]], {strokeColor:'#d2a8ff',strokeWidth:2,dash:2,name:''});
+  board.create('segment', [[0, hc], [extBot, hc + extBot * Math.tan(phiBot)]], {strokeColor:'#d2a8ff',strokeWidth:2,dash:2,name:''});
+
+  // 分界点
+  board.create('point', [[R, h]], {name:'',size:4,face:'o',strokeColor:'#d2a8ff',fillColor:'#d2a8ff'});
+  board.create('point', [[R, 0]], {name:'',size:4,face:'o',strokeColor:'#d2a8ff',fillColor:'#d2a8ff'});
+  board.create('text', [R+0.15, h, 'φ_top=+' + formatNum(C.phiTopDeg,2) + '°'], {fontSize:11,color:'#d2a8ff',fontWeight:'bold'});
+  board.create('text', [R+0.15, 0.1, 'φ_bot=' + formatNum(C.phiBotDeg,2) + '°'], {fontSize:11,color:'#d2a8ff',fontWeight:'bold'});
+
+  // 角度弧
+  var arcR = 1.0;
+  board.create('curve', [
+    function(t) { return arcR * Math.cos(t); },
+    function(t) { return hc + arcR * Math.sin(t); },
+    phiBot, phiTop
+  ], {strokeColor:'#d2a8ff',strokeWidth:1.5,fillColor:'#d2a8ff',fillOpacity:0.08});
+
+  // 水平线
+  board.create('segment', [[0, hc], [R+1.5, hc]], {strokeColor:'#8b949e',strokeWidth:1,dash:1,name:''});
+
+  // 区域标签
+  board.create('text', [R+1.8, h+R/2, '← 半球\n' + formatNum(C.rowsHemi/C.Nv*100,1) + '%'], {fontSize:10,color:'#f0883e',fontWeight:'bold'});
+  board.create('text', [R+1.8, h/2, '← 墙面\n' + formatNum(C.rowsWall/C.Nv*100,1) + '%'], {fontSize:10,color:'#3fb950',fontWeight:'bold'});
+  board.create('text', [R+1.8, -0.3, '← 地面\n' + formatNum(C.rowsGround/C.Nv*100,1) + '%'], {fontSize:10,color:'#f85149',fontWeight:'bold'});
+
+  // 标题
+  board.create('text', [-R_big-1.5, h+R+1, 'RVR 步骤二核心几何原理\n大球 ⊃ 半圆柱体 ⊃ 相机C(0,'+formatNum(hc,2)+')\n射线擦边 = 分界仰角'], {fontSize:11,color:'#c9d1d9'});
+
+  board.fullUpdate();
+}
+
+// ==================== 3D Three.js 视图 ====================
+var scene3D, camera3D, renderer3D, controls3D, animId3D;
+
+function draw3D() {
+  var C = computeAll(getParams());
+  var R = C.R, h = getParams().h, hc = getParams().h_cam;
+  var container = document.getElementById('view3D');
+
+  // 清理旧场景
+  if (animId3D) cancelAnimationFrame(animId3D);
+  if (renderer3D) {
+    renderer3D.dispose();
+    container.innerHTML = '';
+  }
+  if (scene3D) {
+    scene3D.traverse(function(o) { if (o.geometry) o.geometry.dispose(); if (o.material) { if (Array.isArray(o.material)) o.material.forEach(function(m){m.dispose();}); else o.material.dispose(); } });
+  }
+
+  scene3D = new THREE.Scene();
+  scene3D.background = new THREE.Color(0x0a0a14);
+
+  var w = container.clientWidth, hh2 = container.clientHeight || 600;
+  // 相机：中等高度 + 远距离，确保半球+圆柱同时在视野内
+  // 相机Y = h + R*0.35 ≈ 4.27m（半球下1/3处，不高过穹顶挤压圆柱）
+  // 距离 ≈ R*3.8，保证足够远看到整体
+  var camDist = R * 3.8;
+  var camY = h + R * 0.35;
+  camera3D = new THREE.PerspectiveCamera(45, w / hh2, 0.5, 100);
+  camera3D.position.set(camDist * 0.707, camY, camDist * 0.707);
+  camera3D.lookAt(0, (h + R) / 2, 0);
+
+  renderer3D = new THREE.WebGLRenderer({ antialias: true });
+  renderer3D.setSize(w, hh2);
+  renderer3D.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer3D.shadowMap.enabled = true;
+  container.appendChild(renderer3D.domElement);
+
+  // 旋转中心：圆柱+半球整体质心 (y ≈ (h + h + R) / 3 ≈ 4.5m 偏上)
+  // 实际取圆柱中心与半球顶点之间的中点：y = h + R/2
+  var targetY = h + R / 2;
+  controls3D = new THREE.OrbitControls(camera3D, renderer3D.domElement);
+  controls3D.target.set(0, targetY, 0);
+  controls3D.update();
+  controls3D.enableDamping = true;
+  controls3D.dampingFactor = 0.08;
+
+  // 光照
+  scene3D.add(new THREE.AmbientLight(0x404060, 0.6));
+  var dl = new THREE.DirectionalLight(0xffffff, 0.8);
+  dl.position.set(10, 15, 10);
+  scene3D.add(dl);
+  dl = new THREE.DirectionalLight(0x4488ff, 0.3);
+  dl.position.set(-5, 3, -5);
+  scene3D.add(dl);
+
+  // 半透明大球
+  var bigSphere = new THREE.Mesh(
+    new THREE.SphereGeometry(R * 1.8, 48, 24),
+    new THREE.MeshPhongMaterial({ color: 0x58a6ff, transparent: true, opacity: 0.08, wireframe: false })
+  );
+  bigSphere.position.y = hc;
+  scene3D.add(bigSphere);
+
+  var wireBig = new THREE.Mesh(
+    new THREE.SphereGeometry(R * 1.8, 36, 18),
+    new THREE.MeshBasicMaterial({ color: 0x58a6ff, wireframe: true, transparent: true, opacity: 0.15 })
+  );
+  wireBig.position.y = hc;
+  scene3D.add(wireBig);
+
+  // 半球（面片极透明 + 线框显眼，任意角度不可遮挡圆柱）
+  var hemiGeom = new THREE.SphereGeometry(R, 48, 24, 0, Math.PI * 2, 0, Math.PI / 2);
+  var hemi = new THREE.Mesh(hemiGeom, new THREE.MeshPhongMaterial({ color: 0xf0883e, transparent: true, opacity: 0.15, side: THREE.DoubleSide }));
+  hemi.position.y = h;
+  scene3D.add(hemi);
+  // 半球线框（子午线+纬线，粗网格醒目）
+  var hemiWireGeom = new THREE.SphereGeometry(R + 0.02, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2);
+  var hemiWire = new THREE.Mesh(hemiWireGeom, new THREE.MeshBasicMaterial({ color: 0xf0883e, wireframe: true, transparent: true, opacity: 0.7 }));
+  hemiWire.position.y = h;
+  scene3D.add(hemiWire);
+  // 半球赤道圆环（明确底部轮廓）
+  var hemiRingGeom = new THREE.TorusGeometry(R + 0.02, 0.07, 16, 80);
+  var hemiRing = new THREE.Mesh(hemiRingGeom, new THREE.MeshBasicMaterial({ color: 0xf0883e }));
+  hemiRing.rotation.x = Math.PI / 2;
+  hemiRing.position.y = h;
+  scene3D.add(hemiRing);
+
+  // 圆柱墙（面片极透明 + 线框显眼，从上方也能看到柱体）
+  var cylGeom = new THREE.CylinderGeometry(R, R, h, 64, 4, true);
+  var cyl = new THREE.Mesh(cylGeom, new THREE.MeshPhongMaterial({ color: 0x3fb950, transparent: true, opacity: 0.15, side: THREE.DoubleSide }));
+  cyl.position.y = h / 2;
+  scene3D.add(cyl);
+  // 圆柱线框（纵线+横环，网格感）
+  var cylWireGeom = new THREE.CylinderGeometry(R + 0.03, R + 0.03, h, 24, 4, true);
+  var cylWire = new THREE.Mesh(cylWireGeom, new THREE.MeshBasicMaterial({ color: 0x3fb950, wireframe: true, transparent: true, opacity: 0.65 }));
+  cylWire.position.y = h / 2;
+  scene3D.add(cylWire);
+
+  // 地面
+  var groundGeom = new THREE.CircleGeometry(R, 64);
+  var ground = new THREE.Mesh(groundGeom, new THREE.MeshPhongMaterial({ color: 0xf85149, transparent: true, opacity: 0.5, side: THREE.DoubleSide }));
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.y = 0.01;
+  scene3D.add(ground);
+
+  // 地面边缘环
+  var ringGeom = new THREE.TorusGeometry(R, 0.05, 16, 100);
+  var ring = new THREE.Mesh(ringGeom, new THREE.MeshBasicMaterial({ color: 0xf85149 }));
+  ring.rotation.x = Math.PI / 2;
+  ring.position.y = 0.02;
+  scene3D.add(ring);
+
+  // 相机点
+  var camSphere = new THREE.Mesh(new THREE.SphereGeometry(0.15, 16, 16), new THREE.MeshBasicMaterial({ color: 0xffa657 }));
+  camSphere.position.set(0, hc, 0);
+  scene3D.add(camSphere);
+
+  // 分界环（墙面-半球 和 墙面-地面）
+  function addBoundaryRing(y, color, label) {
+    var rGeom = new THREE.TorusGeometry(R + 0.02, 0.04, 8, 64);
+    var r = new THREE.Mesh(rGeom, new THREE.MeshBasicMaterial({ color: color }));
+    r.rotation.x = Math.PI / 2;
+    r.position.y = y;
+    scene3D.add(r);
+  }
+  addBoundaryRing(h, 0xd2a8ff);
+  addBoundaryRing(0.002, 0xd2a8ff);
+
+  // 分界射线
+  var phiTop = C.phiTopRad, phiBot = C.phiBotRad;
+  function addRay(phi, color) {
+    var len = R * 2;
+    var pts = [new THREE.Vector3(0, hc, 0), new THREE.Vector3(len * Math.cos(phi), hc + len * Math.sin(phi), 0)];
+    var rayGeom = new THREE.BufferGeometry().setFromPoints(pts);
+    var ray = new THREE.Line(rayGeom, new THREE.LineDashedMaterial({ color: color, dashSize: 0.5, gapSize: 0.3 }));
+    ray.computeLineDistances();
+    scene3D.add(ray);
+  }
+  addRay(phiTop, 0xd2a8ff);
+  addRay(phiBot, 0xd2a8ff);
+
+  // 网格辅助
+  var gridHelper = new THREE.GridHelper(R * 4, 20, 0x30363d, 0x1a1a2e);
+  gridHelper.position.y = -0.01;
+  scene3D.add(gridHelper);
+
+  // 坐标轴
+  var axLen = R * 1.5;
+  var axGeom = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, axLen, 0)]);
+  scene3D.add(new THREE.Line(axGeom, new THREE.LineBasicMaterial({ color: 0x444466 })));
+
+  function animate() {
+    animId3D = requestAnimationFrame(animate);
+    controls3D.update();
+    renderer3D.render(scene3D, camera3D);
+  }
+  animate();
+
+  // 响应式处理
+  window.addEventListener('resize', function() {
+    if (currentView === '3d' && container) {
+      var w2 = container.clientWidth, h3 = container.clientHeight;
+      camera3D.aspect = w2 / h3;
+      camera3D.updateProjectionMatrix();
+      renderer3D.setSize(w2, h3);
+    }
+  });
+}
+
+// ==================== 初始化 ====================
+onSliderChange();
+draw2D();
+
+// 当面板宽度变化时更新2D视图
+window.addEventListener('resize', function() {
+  if (currentView === '2d' && board) {
+    board.resizeContainer(
+      document.getElementById('view2D').clientWidth,
+      document.getElementById('view2D').clientHeight
+    );
+  }
+});
+</script>
+</body>
+</html>
