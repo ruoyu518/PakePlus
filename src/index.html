@@ -1,0 +1,2247 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>RVR沉浸式空间参数化计算与可视化系统（半球圆柱体）</title>
+  <link rel="stylesheet" href="jsxgraph.css">
+  <script src="jsxgraphcore.js"></script>
+  <style>
+    /* ==================== 主题变量 ==================== */
+    :root {
+      --bg-body: #0d1117;
+      --bg-panel: #161b22;
+      --bg-card: #0d1117;
+      --bg-input: #0d1117;
+      --bg-slider: #21262d;
+      --bg-item: #161b22;
+      --bg-apply: #238636;
+      --bg-apply-hover: #2ea043;
+      --bg-reset: #21262d;
+      --border-c: #30363d;
+      --border-sub: #21262d;
+      --text-pri: #c9d1d9;
+      --text-sec: #8b949e;
+      --text-muted: #6e7681;
+      --text-label: #484f58;
+      --c-blue: #58a6ff;
+      --c-green: #7ee787;
+      --c-green2: #3fb950;
+      --c-orange: #f0883e;
+      --c-purple: #d2a8ff;
+      --c-red: #f85149;
+      --c-yellow: #ffa657;
+      --c-teal: #2dd4bf;
+      --c-magenta: #f472b6;
+      --c-brown: #d4a574;
+      --c-badge: #238636;
+      --c-scrollbar: #30363d;
+      --c-circle-fill: #0d1117;
+      --c-axis: #484f58;
+    }
+    [data-theme="light"] {
+      --bg-body: #f6f8fa;
+      --bg-panel: #ffffff;
+      --bg-card: #ffffff;
+      --bg-input: #f6f8fa;
+      --bg-slider: #d0d7de;
+      --bg-item: #f6f8fa;
+      --bg-apply: #1a7f37;
+      --bg-apply-hover: #2da44e;
+      --bg-reset: #eaeef2;
+      --border-c: #d0d7de;
+      --border-sub: #eaeef2;
+      --text-pri: #1f2328;
+      --text-sec: #656d76;
+      --text-muted: #8c959f;
+      --text-label: #afb8c1;
+      --c-blue: #0969da;
+      --c-green: #1a7f37;
+      --c-green2: #1a7f37;
+      --c-orange: #bc4c00;
+      --c-purple: #8250df;
+      --c-red: #cf222e;
+      --c-yellow: #9a6700;
+      --c-teal: #0d7377;
+      --c-magenta: #a8377a;
+      --c-brown: #7c4a03;
+      --c-badge: #1a7f37;
+      --c-scrollbar: #d0d7de;
+      --c-circle-fill: #f6f8fa;
+      --c-axis: #afb8c1;
+    }
+
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg-body);color:var(--text-pri);overflow:hidden;height:100vh}
+    .app{display:flex;flex-direction:column;height:100vh}
+
+    /* 第一行：软件名 + 文件状态 */
+    .topbar{display:flex;align-items:center;gap:12px;padding:6px 16px;background:var(--bg-panel);border-bottom:1px solid var(--border-c)}
+    .topbar h1{font-size:14px;color:var(--c-blue);white-space:nowrap}
+    .badge{font-size:10px;background:var(--c-badge);color:#fff;border-radius:10px;padding:2px 8px;margin-left:8px}
+    .topbar .filebar-status{font-size:11px;color:var(--text-muted);margin-left:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:300px}
+
+    /* 第二行：菜单栏 */
+    .menubar{display:flex;align-items:center;gap:0;padding:0 16px;background:var(--bg-panel);border-bottom:1px solid var(--border-c);position:relative;z-index:100}
+    .menu{position:relative}
+    .menu-btn{background:transparent;color:var(--text-pri);border:none;padding:7px 16px;cursor:pointer;font-size:13px;font-family:inherit;transition:background .12s}
+    .menu-btn:hover{background:var(--bg-slider)}
+    .menu-btn.open{background:var(--bg-slider)}
+    .menu-dropdown{position:absolute;top:100%;left:0;min-width:140px;background:var(--bg-panel);border:1px solid var(--border-c);border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,.2);padding:4px;display:none;z-index:200}
+    .menu-dropdown.show{display:block}
+    .menu-item{display:flex;align-items:center;padding:6px 12px;cursor:pointer;font-size:13px;color:var(--text-pri);border-radius:4px;transition:background .1s}
+    .menu-item:hover{background:var(--bg-slider)}
+    .menu-sep{height:1px;background:var(--border-c);margin:4px 0}
+    .menu-item-check{display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:13px;color:var(--text-pri);border-radius:4px;transition:background .1s;user-select:none}
+    .menu-item-check:hover{background:var(--bg-slider)}
+    .menu-item-check .check-box{display:inline-block;width:16px;text-align:center;font-size:12px;color:var(--c-green);font-weight:bold}
+    .menu-item-check.hidden .check-box{visibility:hidden}
+    .window-hidden{display:none !important}
+
+    /* 菜单内输入控件 */
+    .menu-input-group{padding:8px 12px;min-width:220px}
+    .menu-input-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+    .menu-input-row:last-child{margin-bottom:0}
+    .menu-input-row label{font-size:12px;color:var(--text-sec);white-space:nowrap}
+    .menu-input-row label span{font-size:10px;color:var(--text-muted);margin-left:2px}
+    .menu-input-row input[type=number]{width:80px;background:var(--bg-input);border:1px solid var(--border-c);border-radius:4px;color:var(--c-green);font-size:12px;font-family:Consolas,monospace;padding:3px 6px;text-align:right;outline:none}
+    .menu-input-row input[type=number]:focus{border-color:var(--c-blue)}
+    .menu-input-row input[type=number]::-webkit-inner-spin-button,.menu-input-row input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none}
+    .menu-cost-row{display:flex;align-items:center;gap:6px;padding:4px 12px;font-size:11px}
+    .menu-cost-row .zone-name{font-weight:700;min-width:32px;font-size:12px}
+    .menu-cost-row select{background:var(--bg-input);border:1px solid var(--border-c);border-radius:4px;color:var(--text-pri);font-size:11px;padding:2px 4px;outline:none;cursor:pointer}
+    .menu-cost-row select:focus{border-color:var(--c-blue)}
+    .menu-cost-row input[type=number]{width:64px;background:var(--bg-input);border:1px solid var(--border-c);border-radius:4px;color:var(--c-green);font-size:11px;font-family:Consolas,monospace;padding:2px 4px;text-align:right;outline:none}
+    .menu-cost-row input[type=number]:focus{border-color:var(--c-blue)}
+    .menu-cost-row input[type=number]::-webkit-inner-spin-button,.menu-cost-row input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none}
+    .menu-cost-row .zone-unit{color:var(--text-muted);font-size:9px;white-space:nowrap}
+    .menu-screen-row{display:flex;align-items:center;gap:8px;padding:8px 12px;min-width:200px}
+    .menu-screen-row label{font-size:12px;color:var(--text-sec);white-space:nowrap}
+    .menu-screen-row input[type=number]{width:72px;background:var(--bg-input);border:1px solid var(--border-c);border-radius:4px;color:var(--c-green);font-size:12px;font-family:Consolas,monospace;padding:3px 6px;text-align:right;outline:none}
+    .menu-screen-row input[type=number]:focus{border-color:var(--c-blue)}
+    .menu-screen-row input[type=number]::-webkit-inner-spin-button,.menu-screen-row input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none}
+    .menu-screen-row .x-sep{color:var(--text-sec);font-size:12px}
+    .menu-screen-row .px-unit{color:var(--text-muted);font-size:10px}
+
+    /* 预估造价只读显示 */
+    .cost-display{display:flex;flex-direction:column;gap:3px}
+    .cost-display-row{display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid var(--border-sub)}
+    .cost-display-row:last-child{border-bottom:none}
+    .cost-display-row .cd-name{font-weight:700;min-width:32px;font-size:11px}
+    .cost-display-row .cd-area{color:var(--text-sec);font-family:Consolas,monospace;font-size:10px}
+    .cost-display-row .cd-price{color:var(--text-muted);font-size:10px}
+    .cost-display-row .cd-subtotal{margin-left:auto;font-family:Consolas,monospace;font-weight:600;font-size:11px;color:var(--c-orange)}
+
+    /* 映射弹窗 */
+    .dialog-box.dialog-wide{min-width:500px;max-width:600px;max-height:80vh}
+    .dialog-box.dialog-wide .dialog-body{max-height:60vh;overflow-y:auto;padding:12px 16px}
+    .dialog-box.dialog-wide .dialog-body .data-row{font-size:12px}
+
+    /* 弹窗 */
+    .dialog-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;display:none;align-items:center;justify-content:center}
+    .dialog-overlay.show{display:flex}
+    .dialog-box{background:var(--bg-panel);border:1px solid var(--border-c);border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,.3);min-width:280px;max-width:400px;overflow:hidden}
+    .dialog-box.dialog-medium{min-width:340px;max-width:460px}
+    .dialog-header{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border-c);background:var(--bg-card)}
+    .dialog-header span{font-size:14px;font-weight:600;color:var(--c-blue)}
+    .dialog-close{background:none;border:none;color:var(--text-sec);font-size:18px;cursor:pointer;padding:0 4px;line-height:1}
+    .dialog-close:hover{color:var(--text-pri)}
+    .dialog-body{padding:16px}
+    .dialog-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+    .dialog-row:last-child{margin-bottom:0}
+    .dialog-row label{font-size:13px;color:var(--text-sec)}
+
+    /* 弹窗内输入控件复用菜单样式 */
+    .dialog-input-group{display:flex;flex-direction:column;gap:12px}
+    .dialog-input-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    .dialog-input-row label{font-size:13px;color:var(--text-sec);white-space:nowrap}
+    .dialog-input-row label span{font-size:11px;color:var(--text-muted);margin-left:2px}
+    .dialog-input-row input[type=number]{width:100px;background:var(--bg-input);border:1px solid var(--border-c);border-radius:4px;color:var(--c-green);font-size:13px;font-family:Consolas,monospace;padding:5px 8px;text-align:right;outline:none}
+    .dialog-input-row input[type=number]:focus{border-color:var(--c-blue)}
+    .dialog-input-row input[type=number]::-webkit-inner-spin-button,.dialog-input-row input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none}
+    .dialog-cost-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border-sub)}
+    .dialog-cost-row:last-child{border-bottom:none}
+    .dialog-cost-row .zone-name{font-weight:700;min-width:36px;font-size:13px}
+    .dialog-cost-row select{background:var(--bg-input);border:1px solid var(--border-c);border-radius:4px;color:var(--text-pri);font-size:12px;padding:4px 6px;outline:none;cursor:pointer}
+    .dialog-cost-row select:focus{border-color:var(--c-blue)}
+    .dialog-cost-row input[type=number]{width:80px;background:var(--bg-input);border:1px solid var(--border-c);border-radius:4px;color:var(--c-green);font-size:12px;font-family:Consolas,monospace;padding:4px 6px;text-align:right;outline:none}
+    .dialog-cost-row input[type=number]:focus{border-color:var(--c-blue)}
+    .dialog-cost-row input[type=number]::-webkit-inner-spin-button,.dialog-cost-row input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none}
+    .dialog-cost-row .zone-unit{color:var(--text-muted);font-size:10px;white-space:nowrap}
+    .dialog-screen-row{display:flex;align-items:center;gap:8px}
+    .dialog-screen-row label{font-size:13px;color:var(--text-sec);white-space:nowrap}
+    .dialog-screen-row input[type=number]{width:90px;background:var(--bg-input);border:1px solid var(--border-c);border-radius:4px;color:var(--c-green);font-size:13px;font-family:Consolas,monospace;padding:5px 8px;text-align:right;outline:none}
+    .dialog-screen-row input[type=number]:focus{border-color:var(--c-blue)}
+    .dialog-screen-row input[type=number]::-webkit-inner-spin-button,.dialog-screen-row input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none}
+    .dialog-screen-row .x-sep{color:var(--text-sec);font-size:13px}
+    .dialog-screen-row .px-unit{color:var(--text-muted);font-size:11px}
+
+    /* 映射计算折叠区 */
+    .mapping-collapse-toggle{display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:6px 0;border-top:1px solid var(--border-sub);margin-top:6px;user-select:none}
+    .mapping-collapse-toggle .toggle-label{font-size:11px;color:var(--text-sec);font-weight:600}
+    .mapping-collapse-toggle .toggle-arrow{font-size:12px;color:var(--text-sec);transition:transform .2s}
+    .mapping-collapse-toggle.expanded .toggle-arrow{transform:rotate(90deg)}
+    .mapping-detail-wrap{max-height:0;overflow:hidden;transition:max-height .3s ease}
+    .mapping-detail-wrap.expanded{max-height:3000px}
+
+    /* 映射弹窗公式行 */
+    .formula-row{padding:6px 0;border-bottom:1px solid var(--border-sub)}
+    .formula-row:last-child{border-bottom:none}
+    .formula-name{font-size:11px;color:var(--text-sec);margin-bottom:2px}
+    .formula-expr{font-size:12px;color:var(--c-purple);font-family:Consolas,monospace;margin-bottom:2px;word-break:break-all}
+    .formula-calc{font-size:11px;color:var(--text-muted);font-family:Consolas,monospace;margin-bottom:2px;word-break:break-all}
+    .formula-result{font-size:13px;color:var(--c-green);font-family:Consolas,monospace;font-weight:600}
+    .dialog-row .scale-value{font-family:Consolas,monospace;font-size:14px;color:var(--c-blue);font-weight:700;min-width:40px;text-align:right}
+    .dialog-row input[type=range]{width:160px;-webkit-appearance:none;height:6px;background:var(--bg-slider);border-radius:3px;outline:none}
+    .dialog-row input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;background:var(--c-blue);border-radius:50%;cursor:pointer}
+    .theme-options{display:flex;gap:8px}
+    .theme-options button{flex:1;background:var(--bg-item);color:var(--text-pri);border:1px solid var(--border-c);border-radius:6px;padding:8px 12px;cursor:pointer;font-size:13px;font-family:inherit;transition:all .12s}
+    .theme-options button:hover{background:var(--bg-slider)}
+    .theme-options button.active{background:var(--c-blue);color:#fff;border-color:var(--c-blue)}
+
+    /* 主体 */
+    .main{display:flex;flex:1;min-height:0}
+
+    /* 可视化区：立面 + 顶面 + 输出，占 2/3 */
+    .viz-area{flex:2;display:flex;flex-direction:column;min-width:0}
+    .diagrams-row{flex:1;display:flex;flex-direction:column;min-height:0}
+    .view-half{flex:1;position:relative;min-height:0;min-width:0;background:var(--bg-panel)}
+    .view-half:first-child{border-bottom:1px solid var(--border-c)}
+    .view-half>div{position:absolute;top:0;left:0;right:0;bottom:0;width:100%;height:100%}
+    .view-label{position:absolute;top:6px;left:8px;font-size:14px;color:var(--c-blue);font-weight:600;z-index:10;pointer-events:none}
+
+    /* 横屏自适应：立面图和顶面图左右并排，面板固定宽度 */
+    @media (min-aspect-ratio:12/10){
+      .diagrams-row{flex-direction:row}
+      .view-half:first-child{border-bottom:none;border-right:1px solid var(--border-c)}
+      .panel{flex:0 0 380px}
+      .output-view{max-height:38%}
+    }
+
+    /* 输出示意图 */
+    .output-view{flex:0 0 auto;min-height:120px;max-height:45%;position:relative;overflow:auto;background:var(--bg-panel);border-top:1px solid var(--border-c);padding:28px 12px 10px}
+    .output-view::-webkit-scrollbar{height:6px;width:6px}
+    .output-view::-webkit-scrollbar-thumb{background:var(--c-scrollbar);border-radius:3px}
+    #outputDiagram{display:flex;flex-direction:column;gap:10px}
+    .output-section{display:flex;flex-direction:column;gap:4px;min-width:max-content}
+    .output-section-title{font-size:12px;color:var(--text-sec);font-weight:600;margin-bottom:2px;padding-left:4px}
+    .section-coord{font-family:Consolas,monospace;font-size:9px;color:var(--text-muted);padding-left:4px;margin-bottom:3px}
+    .output-row{display:flex;align-items:center;gap:12px;flex-wrap:nowrap}
+    .output-rect{display:flex;flex-direction:column;align-items:center;justify-content:center;border:2px solid;border-radius:0;flex-shrink:0;padding:10px 12px;box-sizing:border-box}
+    .output-rect .rect-name{font-size:12px;font-weight:bold;margin-bottom:3px;white-space:nowrap}
+    .output-rect .rect-dims{font-family:Consolas,monospace;font-size:10px;opacity:.85;white-space:nowrap}
+
+    /* 右侧面板：参数数据，占 1/3 */
+    .panel{flex:1;overflow-y:auto;background:var(--bg-panel);border-left:1px solid var(--border-c);display:flex;flex-direction:column;gap:8px;padding:8px;min-width:0}
+    .panel::-webkit-scrollbar{width:6px}
+    .panel::-webkit-scrollbar-thumb{background:var(--c-scrollbar);border-radius:3px}
+
+    .card{background:var(--bg-card);border:1px solid var(--border-c);border-radius:8px;padding:12px}
+    .card h3{color:var(--c-blue);font-size:14px;margin-bottom:8px}
+
+    /* 硬件参数 */
+    .slider-group{margin-bottom:10px}
+    .slider-group label{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--text-sec);margin-bottom:4px}
+    .slider-group label span{font-size:11px}
+    .channel-label{font-size:11px}
+    .channel-unit-sm{font-size:10px}
+    .channel-x{font-size:12px}
+    .channel-px{font-size:11px}
+    .slider-row{display:flex;align-items:center;gap:8px}
+    .slider-row input[type=range]{flex:1;-webkit-appearance:none;height:6px;background:var(--bg-slider);border-radius:3px;outline:none}
+    .slider-row input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;background:var(--c-blue);border-radius:50%;cursor:pointer}
+    .slider-row input[type=number]{width:72px;background:var(--bg-input);border:1px solid var(--border-c);border-radius:5px;color:var(--c-green);font-size:12px;font-family:Consolas,monospace;padding:3px 6px;text-align:right;outline:none}
+    .slider-row input[type=number]:focus{border-color:var(--c-blue)}
+    .slider-row input[type=number]::-webkit-inner-spin-button,.slider-row input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none}
+
+    .btn-row{display:flex;gap:8px}
+    button.apply{background:var(--bg-apply);color:#fff;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px;font-family:inherit;flex:1}
+    button.apply:hover{background:var(--bg-apply-hover)}
+    button.reset{background:var(--bg-reset);color:var(--text-sec);border:1px solid var(--border-c);padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px;font-family:inherit;flex:1}
+
+    /* 映射结果——大字 */
+    .result-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:4px}
+    .result-item{background:var(--bg-item);border:1px solid var(--border-c);border-radius:6px;padding:8px 10px;text-align:center}
+    .result-item .r-label{font-size:10px;color:var(--text-sec);text-transform:uppercase;letter-spacing:.5px}
+    .result-item .r-value{font-size:20px;font-weight:700;font-family:Consolas,monospace;margin-top:2px}
+    .result-item .r-value.green{color:var(--c-green)}
+    .result-item .r-value.orange{color:var(--c-orange)}
+    .result-item .r-value.blue{color:var(--c-blue)}
+    .result-item .r-value.purple{color:var(--c-purple)}
+    .result-item .r-unit{font-size:11px;color:var(--text-sec);margin-left:2px}
+
+    /* 数据行——中等字 */
+    .data-row{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border-sub);font-size:13px}
+    .data-row .label{color:var(--text-sec)}
+    .data-row .value{color:var(--text-pri);font-weight:600;font-family:Consolas,monospace;font-size:13px}
+    .data-row .value.hl{color:var(--c-orange)}
+    .data-row .value.bl{color:var(--c-blue)}
+    .data-row .value.gr{color:var(--c-green)}
+    .data-row .value.pp{color:var(--c-purple)}
+    .data-row .value.rd{color:var(--c-red)}
+
+    .section-title{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin:8px 0 4px;padding-bottom:3px;border-bottom:1px solid var(--border-sub)}
+
+    /* 分屏落地——大数字行 */
+    .ms-big{background:var(--bg-item);border:1px solid var(--border-c);border-radius:6px;padding:8px 10px;text-align:center;margin-bottom:6px}
+    .ms-big .ms-label{font-size:10px;color:var(--text-sec)}
+    .ms-big .ms-value{font-size:22px;font-weight:700;font-family:Consolas,monospace;margin-top:2px}
+
+    /* 折叠卡片 */
+    .card-collapsible .card-toggle{display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none}
+    .card-collapsible .card-toggle h3{margin-bottom:0}
+    .card-collapsible .card-toggle .toggle-hint{font-size:11px;color:var(--c-blue);font-weight:normal}
+    .card-collapsible .card-toggle::after{content:'▾';font-size:12px;color:var(--text-sec);transition:transform .2s;margin-left:8px}
+    .card-collapsible.collapsed .card-toggle::after{transform:rotate(-90deg)}
+    .card-collapsible .card-body{overflow:hidden;transition:max-height .3s ease,opacity .2s;padding-top:8px}
+    .card-collapsible.collapsed .card-body{max-height:0;opacity:0;padding-top:0;overflow:hidden}
+
+    /* 预估造价 */
+    .cost-zones{display:flex;flex-direction:column;gap:5px;margin-bottom:6px}
+    .cost-zone{display:flex;align-items:center;gap:4px;font-size:10px}
+    .cost-zone .zone-name{font-weight:700;min-width:32px;font-size:11px}
+    .cost-zone select{background:var(--bg-input);border:1px solid var(--border-c);border-radius:4px;color:var(--text-pri);font-size:10px;padding:2px 4px;outline:none;cursor:pointer}
+    .cost-zone select:focus{border-color:var(--c-blue)}
+    .cost-zone input[type=number]{width:60px;background:var(--bg-input);border:1px solid var(--border-c);border-radius:4px;color:var(--c-green);font-size:10px;font-family:Consolas,monospace;padding:2px 4px;text-align:right;outline:none}
+    .cost-zone input[type=number]:focus{border-color:var(--c-blue)}
+    .cost-zone input[type=number]::-webkit-inner-spin-button,.cost-zone input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none}
+    .cost-zone .zone-unit{color:var(--text-muted);font-size:9px;white-space:nowrap}
+    .cost-zone .zone-subtotal{margin-left:auto;font-family:Consolas,monospace;font-size:10px;color:var(--text-sec);white-space:nowrap}
+    .cost-estimate{text-align:center}
+    .cost-estimate .cost-label{font-size:10px;color:var(--text-sec);text-transform:uppercase;letter-spacing:.5px}
+    .cost-estimate .cost-value{font-size:24px;font-weight:700;color:var(--c-orange);font-family:Consolas,monospace;margin-top:2px}
+
+    /* 输出示意图动画 */
+    .output-rect{transition:min-width .25s ease,min-height .25s ease}
+  </style>
+</head>
+<body>
+<div class="app">
+  <!-- 第一行：软件名 + 文件名状态 -->
+  <div class="topbar">
+    <h1>RVR沉浸式空间参数化计算与可视化系统（半球圆柱体）</h1>
+    <span class="filebar-status" id="fileStatus">未保存</span>
+  </div>
+
+  <!-- 第二行：菜单栏 -->
+  <div class="menubar">
+    <div class="menu">
+      <button class="menu-btn" onclick="toggleMenu('file', event)">文件</button>
+      <div class="menu-dropdown" id="menuFile">
+        <div class="menu-item" onclick="newParams();closeMenus()">新建</div>
+        <div class="menu-item" onclick="document.getElementById('fileOpen').click();closeMenus()">打开</div>
+        <div class="menu-sep"></div>
+        <div class="menu-item" onclick="saveParams();closeMenus()">保存</div>
+        <div class="menu-item" onclick="saveAsParams();closeMenus()">另存为</div>
+        <div class="menu-sep"></div>
+        <div class="menu-item" onclick="resetParams();closeMenus()">重置默认</div>
+      </div>
+    </div>
+    <div class="menu">
+      <button class="menu-btn" onclick="openDialog('hardware');closeMenus()">硬件</button>
+    </div>
+    <div class="menu">
+      <button class="menu-btn" onclick="openDialog('cost');closeMenus()">造价</button>
+    </div>
+    <div class="menu">
+      <button class="menu-btn" onclick="openDialog('mapping');closeMenus()">映射</button>
+    </div>
+    <div class="menu">
+      <button class="menu-btn" onclick="openDialog('screen');closeMenus()">分屏</button>
+    </div>
+    <div class="menu">
+      <button class="menu-btn" onclick="openDialog('interface');closeMenus()">文字</button>
+    </div>
+    <div class="menu">
+      <button class="menu-btn" onclick="openDialog('appearance');closeMenus()">外观</button>
+    </div>
+    <div class="menu">
+      <button class="menu-btn" onclick="toggleMenu('window', event)">窗口</button>
+      <div class="menu-dropdown" id="menuWindow" style="min-width:180px">
+        <div class="menu-item-check" onclick="event.stopPropagation();toggleWindow('viewElevation', this)">
+          <span class="check-box">✓</span>映射示意图
+        </div>
+        <div class="menu-item-check" onclick="event.stopPropagation();toggleWindow('viewTop', this)">
+          <span class="check-box">✓</span>分屏示意图
+        </div>
+        <div class="menu-item-check" onclick="event.stopPropagation();toggleWindow('viewOutput', this)">
+          <span class="check-box">✓</span>输出示意图
+        </div>
+        <div class="menu-sep"></div>
+        <div class="menu-item-check" onclick="event.stopPropagation();toggleWindow('cardInput', this)">
+          <span class="check-box">✓</span>硬件参数
+        </div>
+        <div class="menu-item-check" onclick="event.stopPropagation();toggleWindow('cardCost', this)">
+          <span class="check-box">✓</span>预估造价
+        </div>
+        <div class="menu-item-check" onclick="event.stopPropagation();toggleWindow('cardMapping', this)">
+          <span class="check-box">✓</span>映射计算
+        </div>
+        <div class="menu-item-check" onclick="event.stopPropagation();toggleWindow('cardMultiScreen', this)">
+          <span class="check-box">✓</span>分屏落地
+        </div>
+      </div>
+    </div>
+    <input type="file" id="fileOpen" accept=".txt" style="display:none" onchange="openParams(this)">
+  </div>
+
+  <!-- 主体 -->
+  <div class="main">
+    <!-- 可视化区：立面图 + 顶面图 + 输出图 -->
+    <div class="viz-area">
+      <div class="diagrams-row">
+        <div class="view-half" id="viewElevation">
+          <span class="view-label">映射示意图</span>
+          <div id="jxgbox"></div>
+        </div>
+        <div class="view-half" id="viewTop">
+          <span class="view-label">分屏示意图</span>
+          <div id="jxgboxTop"></div>
+        </div>
+      </div>
+      <!-- 输出示意图 -->
+      <div class="output-view" id="viewOutput">
+        <span class="view-label">输出示意图</span>
+        <div id="outputDiagram"></div>
+      </div>
+    </div>
+
+    <!-- 右侧面板 -->
+    <div class="panel" id="infoPanel">
+      <!-- 硬件参数 -->
+      <div class="card" id="cardInput">
+        <h3>硬件参数</h3>
+        <div class="slider-group">
+          <label>圆柱直径 D <span style="color:var(--text-sec)">m（1 ~ 1000）</span></label>
+          <div class="slider-row">
+            <input type="range" id="sliderD" min="0" max="10000" step="1" value="3000" oninput="syncFromSlider('D')">
+            <input type="number" id="numD" min="1" max="1000" step="0.001" value="7.945" onchange="syncFromNumber('D')">
+          </div>
+        </div>
+        <div class="slider-group">
+          <label>圆柱高度 H <span style="color:var(--text-sec)">m（1 ~ 1000）</span></label>
+          <div class="slider-row">
+            <input type="range" id="sliderH" min="0" max="10000" step="1" value="1530" oninput="syncFromSlider('H')">
+            <input type="number" id="numH" min="1" max="1000" step="0.01" value="2.88" onchange="syncFromNumber('H')">
+          </div>
+        </div>
+        <div class="slider-group">
+          <label>像素间距 p <span style="color:var(--text-sec)">mm（0.1 ~ 100）</span></label>
+          <div class="slider-row">
+            <input type="range" id="sliderP" min="0" max="10000" step="1" value="5753" oninput="syncFromSlider('P')">
+            <input type="number" id="numP" min="0.1" max="100" step="0.01" value="2.0" onchange="syncFromNumber('P')">
+          </div>
+        </div>
+      </div>
+
+      <!-- 预估造价（只读显示） -->
+      <div class="card" id="cardCost">
+        <h3>预估造价</h3>
+        <div class="cost-display" id="costDisplay"></div>
+        <div class="cost-estimate" id="costEstimate"></div>
+      </div>
+
+      <!-- 映射计算（映射结果+映射过程合并） -->
+      <div class="card" id="cardMapping">
+        <h3>映射计算</h3>
+        <div id="resultGrid" class="result-grid"></div>
+        <div class="mapping-collapse-toggle" id="mappingToggle" onclick="toggleMappingDetail()">
+          <span class="toggle-label">详细计算过程（29项）</span>
+          <span class="toggle-arrow">▶</span>
+        </div>
+        <div class="mapping-detail-wrap" id="mappingDetailWrap">
+          <div id="dataRows"></div>
+        </div>
+      </div>
+
+      <!-- 分屏落地 -->
+      <div class="card" id="cardMultiScreen">
+        <h3>分屏落地</h3>
+        <div id="multiScreen"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 硬件弹窗 -->
+<div class="dialog-overlay" id="dialogHardware" onclick="if(event.target===this)closeDialog('hardware')">
+  <div class="dialog-box dialog-medium">
+    <div class="dialog-header"><span>硬件参数</span><button class="dialog-close" onclick="closeDialog('hardware')">×</button></div>
+    <div class="dialog-body">
+      <div class="dialog-input-group">
+        <div class="dialog-input-row">
+          <label>圆柱直径 D <span>m（1~1000）</span></label>
+          <input type="number" id="menuD" min="1" max="1000" step="0.001" value="7.945" onchange="syncMenuInput('D')">
+        </div>
+        <div class="dialog-input-row">
+          <label>圆柱高度 H <span>m（1~1000）</span></label>
+          <input type="number" id="menuH" min="1" max="1000" step="0.01" value="2.88" onchange="syncMenuInput('H')">
+        </div>
+        <div class="dialog-input-row">
+          <label>像素间距 p <span>mm（0.1~100）</span></label>
+          <input type="number" id="menuP" min="0.1" max="100" step="0.01" value="2.0" onchange="syncMenuInput('P')">
+        </div>
+        <div class="dialog-input-row">
+          <label>人眼高度 h <span>m（0.1~500）</span></label>
+          <input type="number" id="menuEye" min="0.1" max="500" step="0.01" value="1.50" onchange="syncMenuInput('Eye')">
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 造价弹窗 -->
+<div class="dialog-overlay" id="dialogCost" onclick="if(event.target===this)closeDialog('cost')">
+  <div class="dialog-box dialog-medium">
+    <div class="dialog-header"><span>屏幕造价配置</span><button class="dialog-close" onclick="closeDialog('cost')">×</button></div>
+    <div class="dialog-body">
+      <div class="dialog-cost-row">
+        <span class="zone-name" style="color:var(--c-orange)">顶面</span>
+        <select id="zoneType_top" onchange="onZoneTypeChange('top')">
+          <option value="custom">异形屏</option>
+          <option value="regular">常规屏</option>
+        </select>
+        <input type="number" id="zonePrice_top" value="8000" min="0" step="100" onchange="updateCost()">
+        <span class="zone-unit">元/m²</span>
+      </div>
+      <div class="dialog-cost-row">
+        <span class="zone-name" style="color:var(--c-green)">墙面</span>
+        <select id="zoneType_wall" onchange="onZoneTypeChange('wall')">
+          <option value="custom">异形屏</option>
+          <option value="regular" selected>常规屏</option>
+        </select>
+        <input type="number" id="zonePrice_wall" value="5000" min="0" step="100" onchange="updateCost()">
+        <span class="zone-unit">元/m²</span>
+      </div>
+      <div class="dialog-cost-row">
+        <span class="zone-name" style="color:var(--c-red)">地面</span>
+        <select id="zoneType_gnd" onchange="onZoneTypeChange('gnd')">
+          <option value="custom">异形屏</option>
+          <option value="regular" selected>常规屏</option>
+        </select>
+        <input type="number" id="zonePrice_gnd" value="5000" min="0" step="100" onchange="updateCost()">
+        <span class="zone-unit">元/m²</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 分屏弹窗 -->
+<div class="dialog-overlay" id="dialogScreen" onclick="if(event.target===this)closeDialog('screen')">
+  <div class="dialog-box dialog-medium">
+    <div class="dialog-header"><span>通道分辨率</span><button class="dialog-close" onclick="closeDialog('screen')">×</button></div>
+    <div class="dialog-body">
+      <div class="dialog-screen-row">
+        <label>通道分辨率</label>
+        <input type="number" id="numChW" min="1" max="32768" step="1" value="7680" onchange="onParamChange()">
+        <span class="x-sep">×</span>
+        <input type="number" id="numChH" min="1" max="32768" step="1" value="4320" onchange="onParamChange()">
+        <span class="px-unit">px</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 界面弹窗 -->
+<div class="dialog-overlay" id="dialogInterface" onclick="if(event.target===this)closeDialog('interface')">
+  <div class="dialog-box">
+    <div class="dialog-header"><span>文字大小</span><button class="dialog-close" onclick="closeDialog('interface')">×</button></div>
+    <div class="dialog-body">
+      <div class="dialog-row">
+        <label>缩放比例</label>
+        <input type="range" id="fontScaleSlider" min="0.8" max="2" step="0.1" value="1" oninput="setFontScale(this.value)">
+        <span class="scale-value" id="fontScaleValue">1.0x</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 外观弹窗 -->
+<div class="dialog-overlay" id="dialogAppearance" onclick="if(event.target===this)closeDialog('appearance')">
+  <div class="dialog-box">
+    <div class="dialog-header"><span>外观主题</span><button class="dialog-close" onclick="closeDialog('appearance')">×</button></div>
+    <div class="dialog-body">
+      <div class="theme-options">
+        <button onclick="setTheme('dark')" data-tb="dark">深色</button>
+        <button onclick="setTheme('light')" data-tb="light">浅色</button>
+        <button onclick="setTheme('auto')" data-tb="auto">自动</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 映射弹窗（所有公式与详细计算过程） -->
+<div class="dialog-overlay" id="dialogMapping" onclick="if(event.target===this)closeDialog('mapping')">
+  <div class="dialog-box dialog-wide">
+    <div class="dialog-header"><span>映射计算详情</span><button class="dialog-close" onclick="closeDialog('mapping')">×</button></div>
+    <div class="dialog-body" id="mappingDetail"></div>
+  </div>
+</div>
+
+<script>
+// ==================== 菜单管理 ====================
+function toggleMenu(name, e) {
+  if (e) e.stopPropagation();
+  var dd = document.getElementById('menu' + name.charAt(0).toUpperCase() + name.slice(1));
+  var btn = e ? e.target : null;
+  var wasOpen = dd.classList.contains('show');
+  closeMenus();
+  if (!wasOpen) {
+    dd.classList.add('show');
+    if (btn) btn.classList.add('open');
+  }
+}
+function closeMenus() {
+  document.querySelectorAll('.menu-dropdown').forEach(function(d) { d.classList.remove('show'); });
+  document.querySelectorAll('.menu-btn').forEach(function(b) { b.classList.remove('open'); });
+}
+document.addEventListener('click', function() { closeMenus(); });
+
+// ==================== 弹窗管理 ====================
+function openDialog(name) {
+  var id = 'dialog' + name.charAt(0).toUpperCase() + name.slice(1);
+  var el = document.getElementById(id);
+  if (el) el.classList.add('show');
+}
+function closeDialog(name) {
+  var id = 'dialog' + name.charAt(0).toUpperCase() + name.slice(1);
+  var el = document.getElementById(id);
+  if (el) el.classList.remove('show');
+}
+
+// ==================== 字体缩放 ====================
+var FONT_SIZES = {
+  '.topbar h1': 14, '.topbar .filebar-status': 11,
+  '.menu-btn': 13, '.menu-item': 13, '.menu-item-check': 13, '.menu-item-check .check-box': 12,
+  '.dialog-input-row label': 13, '.dialog-input-row label span': 11,
+  '.dialog-input-row input[type=number]': 13,
+  '.dialog-cost-row .zone-name': 13, '.dialog-cost-row select': 12,
+  '.dialog-cost-row input[type=number]': 12, '.dialog-cost-row .zone-unit': 10,
+  '.dialog-screen-row label': 13, '.dialog-screen-row input[type=number]': 13,
+  '.dialog-screen-row .x-sep': 13, '.dialog-screen-row .px-unit': 11,
+  '.view-label': 14,
+  '.output-section-title': 12, '.section-coord': 9,
+  '.output-rect .rect-name': 12, '.output-rect .rect-dims': 10,
+  '.card h3': 14, '.slider-group label': 12, '.slider-group label span': 11,
+  '.slider-row input[type=number]': 12,
+  '.result-item .r-label': 10, '.result-item .r-value': 20,
+  '.result-item .r-unit': 11,
+  '.data-row': 13, '.data-row .value': 13, '.data-row .label': 13,
+  '.section-title': 11,
+  '.ms-big .ms-label': 10, '.ms-big .ms-value': 22, '.ms-big .ms-value span': 13,
+  '.cost-display-row': 11, '.cost-display-row .cd-name': 11,
+  '.cost-display-row .cd-area': 10, '.cost-display-row .cd-price': 10,
+  '.cost-display-row .cd-subtotal': 11,
+  '.cost-estimate .cost-label': 10, '.cost-estimate .cost-value': 24,
+  '.output-total': 12, '.output-total strong': 14,
+  '.dialog-header span': 14, '.dialog-row label': 13,
+  '.dialog-row .scale-value': 14, '.theme-options button': 13,
+  '.mapping-collapse-toggle .toggle-label': 11, '.mapping-collapse-toggle .toggle-arrow': 12,
+  '.formula-row .formula-name': 11, '.formula-row .formula-expr': 12,
+  '.formula-row .formula-calc': 11, '.formula-row .formula-result': 13
+};
+function setFontScale(scale) {
+  scale = parseFloat(scale);
+  if (isNaN(scale)) scale = 1;
+  var valEl = document.getElementById('fontScaleValue');
+  if (valEl) valEl.textContent = scale.toFixed(1) + 'x';
+  var slider = document.getElementById('fontScaleSlider');
+  if (slider) slider.value = scale;
+  // 生成覆盖样式
+  var css = '';
+  for (var sel in FONT_SIZES) {
+    if (sel.indexOf('::after') >= 0) continue; // 伪元素用JS无法覆盖，跳过
+    css += sel + '{font-size:' + (FONT_SIZES[sel] * scale).toFixed(1) + 'px !important}\n';
+  }
+  var styleEl = document.getElementById('fontScaleStyle');
+  if (!styleEl) {
+    styleEl = document.createElement('style');
+    styleEl.id = 'fontScaleStyle';
+    document.head.appendChild(styleEl);
+  }
+  styleEl.textContent = css;
+  localStorage.setItem('rvr-font-scale', scale);
+  // 重绘以更新动态生成的文字
+  setTimeout(function() { if (typeof onParamChange === 'function') onParamChange(); }, 10);
+}
+
+// ==================== 主题管理 ====================
+function setTheme(theme) {
+  var actual = theme;
+  if (theme === 'auto') {
+    actual = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  document.documentElement.setAttribute('data-theme', actual);
+  localStorage.setItem('rvr-theme', theme);
+  document.querySelectorAll('[data-tb]').forEach(function(btn) {
+    btn.classList.toggle('active', btn.getAttribute('data-tb') === theme);
+  });
+  // 重绘JSXGraph以更新颜色
+  setTimeout(function() {
+    if (typeof onParamChange === 'function') onParamChange();
+  }, 50);
+}
+
+// 主题相关颜色（供JSXGraph绘图使用）
+function tColors() {
+  var isLight = document.documentElement.getAttribute('data-theme') === 'light';
+  if (isLight) return {
+    bg: '#ffffff', text: '#1f2328', textSec: '#656d76', textMuted: '#8c959f',
+    blue: '#0969da', green: '#1a7f37', greenB: '#1a7f37',
+    orange: '#bc4c00', purple: '#8250df', red: '#cf222e', yellow: '#9a6700',
+    teal: '#0d7377', magenta: '#a8377a', brown: '#7c4a03',
+    border: '#d0d7de', grid: '#eaeef2', axis: '#afb8c1'
+  };
+  return {
+    bg: '#0d1117', text: '#c9d1d9', textSec: '#8b949e', textMuted: '#6e7681',
+    blue: '#58a6ff', green: '#3fb950', greenB: '#7ee787',
+    orange: '#f0883e', purple: '#d2a8ff', red: '#f85149', yellow: '#ffa657',
+    teal: '#2dd4bf', magenta: '#f472b6', brown: '#d4a574',
+    border: '#30363d', grid: '#21262d', axis: '#484f58'
+  };
+}
+
+// 副屏颜色数组（按序号分配，支持多块副屏区分）
+function subScreenColors(tc) {
+  return [tc.orange, tc.teal, tc.magenta, tc.brown];
+}
+
+// 监听系统主题变化（自动模式下）
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function() {
+  if (localStorage.getItem('rvr-theme') === 'auto') setTheme('auto');
+});
+
+// ==================== 文件操作（新建/打开/保存/另存为） ====================
+var currentFileName = null;
+
+function newParams() {
+  resetParams();
+  currentFileName = null;
+  document.getElementById('fileStatus').textContent = '新建（未保存）';
+}
+
+function getParamsString() {
+  var P = getParams();
+  var lines = [];
+  lines.push('# RVR 参数文件');
+  lines.push('# 生成时间: ' + new Date().toLocaleString('zh-CN'));
+  lines.push('');
+  lines.push('圆柱直径_D=' + P.D.toFixed(3));
+  lines.push('圆柱高度_H=' + P.h.toFixed(2));
+  lines.push('像素间距_p=' + (P.p * 1000).toFixed(2));
+  lines.push('人眼高度_h=' + P.h_eye.toFixed(2));
+  lines.push('通道宽度_W=' + P.chW);
+  lines.push('通道高度_H=' + P.chH);
+  lines.push('');
+  lines.push('# 屏幕造价配置');
+  ['top', 'wall', 'gnd'].forEach(function(z) {
+    var sel = document.getElementById('zoneType_' + z);
+    var price = document.getElementById('zonePrice_' + z);
+    if (sel && price) {
+      lines.push('屏幕类型_' + z + '=' + sel.value);
+      lines.push('屏幕单价_' + z + '=' + price.value);
+    }
+  });
+  return lines.join('\n');
+}
+
+function saveParams() {
+  var content = getParamsString();
+  var blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+  var name = prompt('请输入文件名（不含扩展名）：', currentFileName ? currentFileName.replace('.txt', '') : 'RVR参数');
+  if (!name) return;
+  if (!name.endsWith('.txt')) name += '.txt';
+  currentFileName = name;
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = currentFileName;
+  a.click();
+  document.getElementById('fileStatus').textContent = '已保存: ' + currentFileName;
+}
+
+function saveAsParams() {
+  var content = getParamsString();
+  var blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+  var defaultName = currentFileName ? currentFileName.replace('.txt', '') : 'RVR参数';
+  var name = prompt('请输入另存为的文件名（不含扩展名）：', defaultName);
+  if (!name) return;
+  if (!name.endsWith('.txt')) name += '.txt';
+  currentFileName = name;
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = currentFileName;
+  a.click();
+  document.getElementById('fileStatus').textContent = '已另存: ' + currentFileName;
+}
+
+function openParams(input) {
+  var file = input.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var text = e.target.result;
+    var params = {};
+    var strParams = {};
+    text.split('\n').forEach(function(line) {
+      line = line.trim();
+      if (line.startsWith('#') || !line) return;
+      var idx = line.indexOf('=');
+      if (idx < 0) return;
+      var key = line.substring(0, idx).trim();
+      var val = line.substring(idx + 1).trim();
+      var numVal = parseFloat(val);
+      if (!isNaN(numVal)) params[key] = numVal;
+      strParams[key] = val;
+    });
+    if (params['圆柱直径_D'] !== undefined) setParam('D', params['圆柱直径_D']);
+    if (params['圆柱高度_H'] !== undefined) setParam('H', params['圆柱高度_H']);
+    if (params['像素间距_p'] !== undefined) setParam('P', params['像素间距_p']);
+    if (params['人眼高度_h'] !== undefined) setParam('Eye', params['人眼高度_h']);
+    if (params['通道宽度_W'] !== undefined) document.getElementById('numChW').value = parseInt(params['通道宽度_W']);
+    if (params['通道高度_H'] !== undefined) document.getElementById('numChH').value = parseInt(params['通道高度_H']);
+    ['top', 'wall', 'gnd'].forEach(function(z) {
+      var typeKey = '屏幕类型_' + z;
+      var priceKey = '屏幕单价_' + z;
+      if (strParams[typeKey]) {
+        var sel = document.getElementById('zoneType_' + z);
+        if (sel) sel.value = strParams[typeKey];
+      }
+      if (params[priceKey] !== undefined) {
+        var pe = document.getElementById('zonePrice_' + z);
+        if (pe) pe.value = params[priceKey];
+      }
+    });
+    currentFileName = file.name;
+    document.getElementById('fileStatus').textContent = '已打开: ' + file.name;
+    onParamChange();
+  };
+  reader.readAsText(file, 'UTF-8');
+  input.value = '';
+}
+
+// ==================== 滑块配置（对数滑块） ====================
+var sliderConfigs = {
+  D:   { min: 1,    max: 1000,  log: true,  decimals: 3 },
+  H:   { min: 1,    max: 1000,  log: true,  decimals: 2 },
+  P:   { min: 0.1,  max: 100,   log: true,  decimals: 2 },
+  Eye: { min: 0.1,  max: 500,    log: false, decimals: 2 }
+};
+
+function logToVal(sv, min, max) {
+  if (sv <= 0) return min;
+  if (sv >= 10000) return max;
+  var lr = Math.log(max / min);
+  return min * Math.exp(lr * sv / 10000);
+}
+
+function valToLog(v, min, max) {
+  if (v <= min) return 0;
+  if (v >= max) return 10000;
+  var lr = Math.log(max / min);
+  return Math.round(10000 * Math.log(v / min) / lr);
+}
+
+// ==================== 状态管理 ====================
+var board = null;
+var boardTop = null;
+
+function getParams() {
+  return {
+    D: parseFloat(document.getElementById('numD').value) || 7.945,
+    h: parseFloat(document.getElementById('numH').value) || 2.88,
+    p: (parseFloat(document.getElementById('numP').value) || 2.0) / 1000,
+    h_eye: parseFloat(document.getElementById('menuEye').value) || 1.50,
+    chW: parseInt(document.getElementById('numChW').value) || 7680,
+    chH: parseInt(document.getElementById('numChH').value) || 4320
+  };
+}
+
+function syncFromSlider(key) {
+  var slider = document.getElementById('slider' + key);
+  var num = document.getElementById('num' + key);
+  var cfg = sliderConfigs[key];
+  var v;
+  if (cfg.log) {
+    v = logToVal(parseFloat(slider.value), cfg.min, cfg.max);
+  } else {
+    v = parseFloat(slider.value);
+  }
+  num.value = v.toFixed(cfg.decimals);
+  // Sync menu input
+  var menuEl = document.getElementById('menu' + key);
+  if (menuEl) menuEl.value = v.toFixed(cfg.decimals);
+  onParamChange();
+}
+
+function syncFromNumber(key) {
+  var num = document.getElementById('num' + key);
+  var slider = document.getElementById('slider' + key);
+  var cfg = sliderConfigs[key];
+  var v = parseFloat(num.value);
+  if (isNaN(v)) return;
+  v = Math.max(cfg.min, Math.min(cfg.max, v));
+  num.value = v.toFixed(cfg.decimals);
+  if (slider) {
+    if (cfg.log) {
+      slider.value = valToLog(v, cfg.min, cfg.max);
+    } else {
+      slider.value = v;
+    }
+  }
+  // Sync menu input
+  var menuEl = document.getElementById('menu' + key);
+  if (menuEl) menuEl.value = v.toFixed(cfg.decimals);
+  onParamChange();
+}
+
+// ==================== 菜单输入同步 ====================
+function syncMenuInput(key) {
+  var menuEl = document.getElementById('menu' + key);
+  if (!menuEl) return;
+  var cfg = sliderConfigs[key];
+  var v = parseFloat(menuEl.value);
+  if (isNaN(v)) return;
+  v = Math.max(cfg.min, Math.min(cfg.max, v));
+  menuEl.value = v.toFixed(cfg.decimals);
+  // Sync to main panel (num + slider)
+  var numEl = document.getElementById('num' + key);
+  if (numEl) numEl.value = v.toFixed(cfg.decimals);
+  var sliderEl = document.getElementById('slider' + key);
+  if (sliderEl) {
+    if (cfg.log) {
+      sliderEl.value = valToLog(v, cfg.min, cfg.max);
+    } else {
+      sliderEl.value = v;
+    }
+  }
+  onParamChange();
+}
+
+function syncMenuDisplay() {
+  ['D', 'H', 'P', 'Eye'].forEach(function(key) {
+    var numEl = document.getElementById('num' + key);
+    var menuEl = document.getElementById('menu' + key);
+    // If numEl exists (D/H/P in main panel), sync to menu
+    if (numEl && menuEl) {
+      menuEl.value = numEl.value;
+    }
+    // For Eye, menuEye IS the source — no sync needed
+  });
+}
+
+// ==================== 数值格式化 ====================
+function formatNum(n, d) { return n.toFixed(d); }
+
+function fmtLarge(n) {
+  if (n >= 1e12) return (n / 1e12).toFixed(2) + 'T';
+  if (n >= 1e9)  return (n / 1e9).toFixed(2) + 'G';
+  if (n >= 1e6)  return (n / 1e6).toFixed(2) + 'M';
+  if (n >= 1e4)  return (n / 1e3).toFixed(1) + 'K';
+  return n.toLocaleString();
+}
+
+function fmtArea(a) {
+  if (a >= 1e6) return (a / 1e6).toFixed(2) + ' Mm²';
+  if (a >= 1e3) return (a / 1e3).toFixed(2) + ' Km²';
+  return a.toFixed(2) + ' m²';
+}
+
+function fmtPx(n) {
+  if (n >= 1e9) return (n / 1e9).toFixed(2) + ' Gpx';
+  if (n >= 1e6) return (n / 1e6).toFixed(2) + ' Mpx';
+  if (n >= 1e3) return (n / 1e3).toFixed(2) + ' Kpx';
+  return n.toLocaleString() + ' px';
+}
+
+// ==================== 全部参数计算（29个推导参数 + 分屏落地） ====================
+function computeAll(P) {
+  var R = P.D / 2;
+  var p = P.p;
+  var h = P.h;
+  var he = P.h_eye;
+
+  // 几何尺寸 (5)
+  var C = Math.PI * P.D;
+  var A_hemi = 2 * Math.PI * R * R;
+  var A_wall = C * h;
+  var A_gnd = Math.PI * R * R;
+  var A_total = A_hemi + A_wall + A_gnd;
+
+  // 像素规格 (6)
+  var Nh = Math.round(C / p);
+  var Nv = Math.round(Nh / 2);
+  var NvHemi = Math.round(Nv / 2);
+  var NvWall = Math.round(h / p);
+  var Ngnd = Math.round(P.D / p);
+  var N_total = Nh * Nv;
+
+  // 分界参数
+  var phiTopRad = Math.atan((h - he) / R);
+  var phiBotRad = Math.atan(-he / R);
+  var phiTopDeg = phiTopRad * 180 / Math.PI;
+  var phiBotDeg = phiBotRad * 180 / Math.PI;
+  var rowTop = Math.round(Nv * (90 - phiTopDeg) / 180);
+  var rowBot = Math.round(Nv * (90 - phiBotDeg) / 180);
+  var rowHorizon = Math.round(Nv / 2);
+  var rowsHemi = rowTop;
+  var rowsWall = rowBot - rowTop;
+  var rowsGround = Nv - rowBot;
+  var rowsHemiPct = rowsHemi / Nv * 100;
+  var rowsWallPct = rowsWall / Nv * 100;
+  var rowsGroundPct = rowsGround / Nv * 100;
+
+  // 人眼与质量
+  var fovRad = 2 * Math.atan(R / he);
+  var fovDeg = fovRad * 180 / Math.PI;
+  var fl = 36 / (2 * Math.tan(fovRad / 2));
+  var ppd = Nh / 360;
+
+  // ---- 分屏落地 ----
+  var chW = P.chW || 7680;
+  var chH = P.chH || 4320;
+
+  var mainPxW = Math.min(chW, Nh);
+  var mainPxH = Math.min(chH, Nv);
+  var mainHDeg = mainPxW / ppd;
+  var mainVDeg = mainPxH / ppd;
+
+  var scrH = Math.ceil(Nh / chW);
+  var scrV = Math.ceil(Nv / chH);
+  var scrTotal = scrH * scrV;
+
+  var cellW = Math.ceil(Nh / scrH);
+  var cellH = Math.ceil(Nv / scrV);
+
+  var mainColStart = Math.floor((Nh - mainPxW) / 2);
+  var mainColEnd = mainColStart + mainPxW;
+  var mainRowStart = Math.floor((Nv - mainPxH) / 2);
+  var mainRowEnd = mainRowStart + mainPxH;
+
+  var remHDeg = 360 - mainHDeg;
+  var remVDeg = 180 - mainVDeg;
+
+  var gndScrW = Math.ceil(Ngnd / chW);
+  var gndScrH = Math.ceil(Ngnd / chH);
+  var gndChannels = gndScrW * gndScrH;
+
+  // ===== 按区分屏（主屏最大 + 副屏逐步满载）=====
+  // 副屏列宽算法：
+  //   1块 → 取余
+  //   2块 → 均分
+  //   3+奇数 → nSub-1块满载chW，门口（中间）那块取余最小
+  //   4+偶数 → nSub-1块满载chW，右门口那块取余最小
+  function computeSubColWidths(remW, maxW) {
+    if (remW <= 0) return [];
+    var nSub = Math.ceil(remW / maxW);
+    if (nSub === 1) return [remW];
+    if (nSub === 2) {
+      var half = remW / 2;
+      return [half, half];
+    }
+    // nSub >= 3: nSub-1 块取 maxW，1 块取余
+    var remainder = remW - (nSub - 1) * maxW;
+    // 确定最小块在副屏序列中的位置（0-based，副屏从 mainEnd 起逆时针排列）
+    var smallestIdx;
+    if (nSub % 2 === 1) {
+      // 奇数：门口（中间位置）最小
+      smallestIdx = Math.floor(nSub / 2);
+    } else {
+      // 偶数：靠近右门口（中间偏右）最小
+      smallestIdx = nSub / 2;
+    }
+    var widths = [];
+    for (var i = 0; i < nSub; i++) {
+      widths.push(i === smallestIdx ? remainder : maxW);
+    }
+    return widths;
+  }
+
+  function buildZoneScreens(zoneW, zoneH, maxW, maxH, zoneName) {
+    var screens = [];
+    var mw = Math.min(maxW, zoneW);
+    var mh = Math.min(maxH, zoneH);
+
+    // 横向列划分：第一列 = mw（主屏），副屏按规则分配
+    var colWidths = [mw];
+    var subCols = computeSubColWidths(zoneW - mw, maxW);
+    for (var c = 0; c < subCols.length; c++) colWidths.push(subCols[c]);
+
+    // 纵向行划分：第一行 = mh（主屏行），剩余高度均分
+    var rowHeights = [mh];
+    var remH = zoneH - mh;
+    if (remH > 0) {
+      var nRows = Math.ceil(remH / maxH);
+      var rh = remH / nRows;
+      for (var r = 0; r < nRows; r++) rowHeights.push(rh);
+    }
+
+    for (var r = 0; r < rowHeights.length; r++) {
+      for (var c = 0; c < colWidths.length; c++) {
+        var type = (r === 0 && c === 0) ? 'main' : 'supp';
+        screens.push({ w: colWidths[c], h: rowHeights[r], type: type, zone: zoneName });
+      }
+    }
+    return screens;
+  }
+
+  var erpScreens = [];
+  erpScreens = erpScreens.concat(buildZoneScreens(Nh, rowsHemi, chW, chH, 'top'));
+  erpScreens = erpScreens.concat(buildZoneScreens(Nh, rowsWall, chW, chH, 'wall'));
+
+  // 横向列结构（所有区共用同一套列划分，因为 Nh 相同）
+  var topMainW = Math.min(chW, Nh);
+  var hColWidths = [topMainW];
+  var subColWidthsArr = computeSubColWidths(Nh - topMainW, chW);
+  for (var c = 0; c < subColWidthsArr.length; c++) hColWidths.push(subColWidthsArr[c]);
+  var hColCount = hColWidths.length;
+  var hasSub = hColCount > 1;
+  var subW = hasSub ? hColWidths[1] : 0;
+  var topH = rowsHemi;
+  var wallH = rowsWall;
+
+  var gndCellW = Math.ceil(Ngnd / gndScrW);
+  var gndCellH = Math.ceil(Ngnd / gndScrH);
+  var gndScreens = [];
+  for (var gi = 0; gi < gndChannels; gi++) {
+    gndScreens.push({ w: gndCellW, h: gndCellH, type: 'gnd', zone: 'gnd' });
+  }
+
+  var totalChannels = erpScreens.length + gndScreens.length;
+
+  return {
+    R: R, C: C, A_hemi: A_hemi, A_wall: A_wall, A_gnd: A_gnd, A_total: A_total,
+    Nh: Nh, Nv: Nv, NvHemi: NvHemi, NvWall: NvWall, Ngnd: Ngnd, N_total: N_total,
+    phiTopRad: phiTopRad, phiBotRad: phiBotRad,
+    phiTopDeg: phiTopDeg, phiBotDeg: phiBotDeg,
+    rowTop: rowTop, rowBot: rowBot, rowHorizon: rowHorizon,
+    rowsHemi: rowsHemi, rowsWall: rowsWall, rowsGround: rowsGround,
+    rowsHemiPct: rowsHemiPct, rowsWallPct: rowsWallPct, rowsGroundPct: rowsGroundPct,
+    fovRad: fovRad, fovDeg: fovDeg, fl: fl, ppd: ppd,
+    chW: chW, chH: chH,
+    mainPxW: mainPxW, mainPxH: mainPxH,
+    mainW: mainPxW, subW: subW, topH: topH, wallH: wallH,
+    mainHDeg: mainHDeg, mainVDeg: mainVDeg,
+    hColWidths: hColWidths, hColCount: hColCount, hasSub: hasSub,
+    scrH: hColCount, scrV: scrV, scrTotal: scrTotal,
+    cellW: cellW, cellH: cellH,
+    mainColStart: mainColStart, mainColEnd: mainColEnd,
+    mainRowStart: mainRowStart, mainRowEnd: mainRowEnd,
+    remHDeg: remHDeg, remVDeg: remVDeg,
+    gndScrW: gndScrW, gndScrH: gndScrH, gndChannels: gndChannels,
+    gndCellW: gndCellW, gndCellH: gndCellH,
+    erpScreens: erpScreens, gndScreens: gndScreens,
+    totalChannels: totalChannels
+  };
+}
+
+// ==================== 参数变化 → 实时更新 ====================
+function onParamChange() {
+  updateResults();
+  updateCost();
+  updateDataRows();
+  updateMultiScreen();
+  drawOutputDiagram();
+  syncMenuDisplay();
+  updateMappingDetail();
+
+  // 清理旧board
+  if (board) {
+    JXG.JSXGraph.freeBoard(board);
+    board = null;
+  }
+  if (boardTop) {
+    JXG.JSXGraph.freeBoard(boardTop);
+    boardTop = null;
+  }
+
+  // 清空容器内容，防止残留DOM干扰重新初始化
+  var el1 = document.getElementById('jxgbox');
+  var el2 = document.getElementById('jxgboxTop');
+  if (el1) el1.innerHTML = '';
+  if (el2) el2.innerHTML = '';
+
+  drawElevation();
+  drawTopView();
+}
+
+function toggleDetails() {
+  // 映射过程已合并至映射计算，此函数保留为空避免引用错误
+}
+
+function toggleMappingDetail() {
+  var toggle = document.getElementById('mappingToggle');
+  var wrap = document.getElementById('mappingDetailWrap');
+  if (!toggle || !wrap) return;
+  var expanded = wrap.classList.toggle('expanded');
+  toggle.classList.toggle('expanded', expanded);
+  toggle.querySelector('.toggle-arrow').textContent = expanded ? '▼' : '▶';
+}
+
+function onZoneTypeChange(zone) {
+  var sel = document.getElementById('zoneType_' + zone);
+  var priceInput = document.getElementById('zonePrice_' + zone);
+  if (!sel || !priceInput) return;
+  // 切换类型时更新默认单价（用户可随后手动修改）
+  var defaultPrice = sel.value === 'custom' ? 8000 : 5000;
+  priceInput.value = defaultPrice;
+  updateCost();
+}
+
+function updateCost() {
+  var P = getParams();
+  var C = computeAll(P);
+  var zones = [
+    { key: 'top', area: C.A_hemi, name: '顶面', color: 'orange' },
+    { key: 'wall', area: C.A_wall, name: '墙面', color: 'green' },
+    { key: 'gnd', area: C.A_gnd, name: '地面', color: 'red' }
+  ];
+  var totalCost = 0;
+  var html = '';
+  zones.forEach(function(z) {
+    var priceEl = document.getElementById('zonePrice_' + z.key);
+    var price = priceEl ? parseFloat(priceEl.value) : 0;
+    if (isNaN(price) || price < 0) price = 0;
+    var cost = price * z.area;
+    totalCost += cost;
+    var costStr;
+    if (cost >= 1e4) costStr = '¥ ' + (cost / 1e4).toFixed(1) + ' 万';
+    else costStr = '¥ ' + cost.toFixed(0);
+    html += '<div class="cost-display-row">';
+    html += '<span class="cd-name" style="color:var(--c-' + z.color + ')">' + z.name + '</span>';
+    html += '<span class="cd-area">' + fmtArea(z.area) + '</span>';
+    html += '<span class="cd-price">× ¥' + price.toLocaleString() + '/m²</span>';
+    html += '<span class="cd-subtotal">' + costStr + '</span>';
+    html += '</div>';
+  });
+  var zonesEl = document.getElementById('costDisplay');
+  if (zonesEl) zonesEl.innerHTML = html;
+
+  var el = document.getElementById('costEstimate');
+  if (!el) return;
+  var costStr;
+  if (totalCost >= 1e8) costStr = (totalCost / 1e8).toFixed(2) + ' 亿';
+  else if (totalCost >= 1e4) costStr = (totalCost / 1e4).toFixed(1) + ' 万';
+  else costStr = totalCost.toFixed(0);
+  el.innerHTML = '<div class="cost-label">预估总造价</div><div class="cost-value">¥ ' + costStr + '</div>';
+}
+
+function resetParams() {
+  setParam('D', 7.945);
+  setParam('H', 2.88);
+  setParam('P', 2.0);
+  setParam('Eye', 1.50);
+  document.getElementById('numChW').value = 7680;
+  document.getElementById('numChH').value = 4320;
+  // 重置屏幕造价配置
+  document.getElementById('zoneType_top').value = 'custom';
+  document.getElementById('zonePrice_top').value = 8000;
+  document.getElementById('zoneType_wall').value = 'regular';
+  document.getElementById('zonePrice_wall').value = 5000;
+  document.getElementById('zoneType_gnd').value = 'regular';
+  document.getElementById('zonePrice_gnd').value = 5000;
+  onParamChange();
+}
+
+function setParam(key, val) {
+  var cfg = sliderConfigs[key];
+  var numEl = document.getElementById('num' + key);
+  if (numEl) numEl.value = val.toFixed(cfg.decimals);
+  var sliderEl = document.getElementById('slider' + key);
+  if (sliderEl) {
+    if (cfg.log) {
+      sliderEl.value = valToLog(val, cfg.min, cfg.max);
+    } else {
+      sliderEl.value = val;
+    }
+  }
+  // Sync menu input
+  var menuEl = document.getElementById('menu' + key);
+  if (menuEl) menuEl.value = val.toFixed(cfg.decimals);
+}
+
+// ==================== 映射结果（大字） ====================
+function updateResults() {
+  var P = getParams();
+  var C = computeAll(P);
+
+  var html = '';
+  html += '<div class="result-item"><div class="r-label">全景图规格</div><div class="r-value blue">' + C.Nh.toLocaleString() + '×' + C.Nv.toLocaleString() + '<span class="r-unit">px</span></div></div>';
+  html += '<div class="result-item"><div class="r-label">地面渲染</div><div class="r-value orange">' + C.Ngnd.toLocaleString() + '×' + C.Ngnd.toLocaleString() + '<span class="r-unit">px</span></div></div>';
+  html += '<div class="result-item"><div class="r-label">半球-墙分界</div><div class="r-value purple">Row ' + C.rowTop.toLocaleString() + '</div></div>';
+  html += '<div class="result-item"><div class="r-label">墙-地分界</div><div class="r-value purple">Row ' + C.rowBot.toLocaleString() + '</div></div>';
+  html += '<div class="result-item"><div class="r-label">地面人眼FOV</div><div class="r-value green">' + formatNum(C.fovDeg, 2) + '<span class="r-unit">°</span></div></div>';
+  html += '<div class="result-item"><div class="r-label">等效焦距</div><div class="r-value green">' + formatNum(C.fl, 2) + '<span class="r-unit">mm</span></div></div>';
+  html += '<div class="result-item"><div class="r-label">PPD 角分辨率</div><div class="r-value blue">' + formatNum(C.ppd, 1) + '<span class="r-unit">px/°</span></div></div>';
+  html += '<div class="result-item"><div class="r-label">总像素</div><div class="r-value orange">' + fmtPx(C.N_total) + '</div></div>';
+
+  document.getElementById('resultGrid').innerHTML = html;
+}
+
+// ==================== 全部29个推导参数（中等字） ====================
+function buildDataRowsHTML() {
+  var P = getParams();
+  var C = computeAll(P);
+  var h = P.h;
+
+  var html = '';
+
+  html += '<div class="section-title">① 几何尺寸</div>';
+  html += '<div class="data-row"><span class="label">结构半径 R</span><span class="value">' + formatNum(C.R, 3) + ' m</span></div>';
+  html += '<div class="data-row"><span class="label">圆柱周长 C</span><span class="value gr">' + formatNum(C.C, 3) + ' m</span></div>';
+  html += '<div class="data-row"><span class="label">半球表面积 A<sub>hemi</sub></span><span class="value">' + fmtArea(C.A_hemi) + '</span></div>';
+  html += '<div class="data-row"><span class="label">圆柱侧面积 A<sub>wall</sub></span><span class="value">' + fmtArea(C.A_wall) + '</span></div>';
+  html += '<div class="data-row"><span class="label">地面面积 A<sub>gnd</sub></span><span class="value rd">' + fmtArea(C.A_gnd) + '</span></div>';
+  html += '<div class="data-row"><span class="label">总显示面积 A<sub>total</sub></span><span class="value hl">' + fmtArea(C.A_total) + '</span></div>';
+
+  html += '<div class="section-title">② 像素规格</div>';
+  html += '<div class="data-row"><span class="label">水平总像素 N<sub>h</sub></span><span class="value bl">' + C.Nh.toLocaleString() + ' px</span></div>';
+  html += '<div class="data-row"><span class="label">垂直总像素 N<sub>v</sub></span><span class="value bl">' + C.Nv.toLocaleString() + ' px</span></div>';
+  html += '<div class="data-row"><span class="label">半球垂直像素 N<sub>v,hemi</sub></span><span class="value">' + C.NvHemi.toLocaleString() + ' px</span></div>';
+  html += '<div class="data-row"><span class="label">墙面垂直像素 N<sub>v,wall</sub></span><span class="value">' + C.NvWall.toLocaleString() + ' px</span></div>';
+  html += '<div class="data-row"><span class="label">地面像素 N<sub>gnd</sub></span><span class="value">' + C.Ngnd.toLocaleString() + ' px</span></div>';
+  html += '<div class="data-row"><span class="label">总像素数 N<sub>total</sub></span><span class="value hl">' + fmtPx(C.N_total) + '</span></div>';
+
+  html += '<div class="section-title">③ 分界与行映射</div>';
+  html += '<div class="data-row"><span class="label">上分界角 φ<sub>top</sub></span><span class="value pp">' + formatNum(C.phiTopRad, 4) + ' rad (' + formatNum(C.phiTopDeg, 2) + '°)</span></div>';
+  html += '<div class="data-row"><span class="label">下分界角 φ<sub>bot</sub></span><span class="value pp">' + formatNum(C.phiBotRad, 4) + ' rad (' + formatNum(C.phiBotDeg, 2) + '°)</span></div>';
+  html += '<div class="data-row"><span class="label">上分界行号 Row<sub>top</sub></span><span class="value">' + C.rowTop.toLocaleString() + '</span></div>';
+  html += '<div class="data-row"><span class="label">下分界行号 Row<sub>bot</sub></span><span class="value">' + C.rowBot.toLocaleString() + '</span></div>';
+  html += '<div class="data-row"><span class="label">水平线行号 Row<sub>horizon</sub></span><span class="value">' + C.rowHorizon.toLocaleString() + '</span></div>';
+  html += '<div class="data-row"><span class="label">半球区行数</span><span class="value hl">' + C.rowsHemi.toLocaleString() + ' (' + formatNum(C.rowsHemiPct, 1) + '%)</span></div>';
+  html += '<div class="data-row"><span class="label">墙面区行数</span><span class="value hl">' + C.rowsWall.toLocaleString() + ' (' + formatNum(C.rowsWallPct, 1) + '%)</span></div>';
+  html += '<div class="data-row"><span class="label">地面区行数</span><span class="value hl">' + C.rowsGround.toLocaleString() + ' (' + formatNum(C.rowsGroundPct, 1) + '%)</span></div>';
+  html += '<div class="data-row"><span class="label">半球区行占比</span><span class="value pp">' + formatNum(C.rowsHemiPct, 2) + '%</span></div>';
+  html += '<div class="data-row"><span class="label">墙面区行占比</span><span class="value pp">' + formatNum(C.rowsWallPct, 2) + '%</span></div>';
+  html += '<div class="data-row"><span class="label">地面区行占比</span><span class="value pp">' + formatNum(C.rowsGroundPct, 2) + '%</span></div>';
+
+  html += '<div class="section-title">④ 人眼与质量指标</div>';
+  html += '<div class="data-row"><span class="label">地面人眼FOV</span><span class="value gr">' + formatNum(C.fovRad, 4) + ' rad (' + formatNum(C.fovDeg, 2) + '°)</span></div>';
+  html += '<div class="data-row"><span class="label">等效焦距 f</span><span class="value gr">' + formatNum(C.fl, 2) + ' mm</span></div>';
+  html += '<div class="data-row"><span class="label">PPD 角分辨率</span><span class="value bl">' + formatNum(C.ppd, 2) + ' px/°</span></div>';
+  html += '<div class="data-row"><span class="label">半球像素密度</span><span class="value">' + fmtLarge(C.NvHemi) + ' px/' + formatNum(C.R, 1) + 'm弧</span></div>';
+  html += '<div class="data-row"><span class="label">墙面像素密度</span><span class="value">' + fmtLarge(C.NvWall) + ' px/' + formatNum(h, 1) + 'm高</span></div>';
+  html += '<div class="data-row"><span class="label">地面像素边长 N<sub>gnd</sub></span><span class="value rd">' + C.Ngnd.toLocaleString() + ' px/边</span></div>';
+
+  return html;
+}
+
+function updateDataRows() {
+  var el = document.getElementById('dataRows');
+  if (el) el.innerHTML = buildDataRowsHTML();
+}
+
+// ==================== 映射弹窗（详细计算过程 + 公式） ====================
+function buildMappingDetailHTML() {
+  var P = getParams();
+  var C = computeAll(P);
+  var h = P.h;
+  var D = P.D, R = C.R, p = P.p * 1000;
+  var subColorNames = ['orange', 'teal', 'magenta', 'brown'];
+  function pad2(n) { return n < 10 ? '0' + n : '' + n; }
+
+  function row(name, formula, calc, result, color) {
+    var cls = color ? ' style="color:var(--c-' + color + ')"' : '';
+    var html = '<div class="formula-row">';
+    html += '<div class="formula-name"' + cls + '>' + name + '</div>';
+    html += '<div class="formula-expr">' + formula + '</div>';
+    html += '<div class="formula-calc">' + calc + '</div>';
+    html += '<div class="formula-result"' + cls + '>' + result + '</div>';
+    html += '</div>';
+    return html;
+  }
+
+  var html = '';
+
+  html += '<div class="section-title">① 几何尺寸</div>';
+  html += row('结构半径 R', 'R = D / 2', 'R = ' + formatNum(D, 3) + ' / 2', formatNum(C.R, 3) + ' m', 'blue');
+  html += row('圆柱周长 C', 'C = π · D', 'C = π × ' + formatNum(D, 3), formatNum(C.C, 3) + ' m', 'green');
+  html += row('半球表面积 A_hemi', 'A = 2πR² = πD²/2', 'A = π × ' + formatNum(D, 3) + '² / 2', fmtArea(C.A_hemi), 'orange');
+  html += row('圆柱侧面积 A_wall', 'A = C · h = πD · h', 'A = π × ' + formatNum(D, 3) + ' × ' + formatNum(h, 2), fmtArea(C.A_wall), 'green');
+  html += row('地面面积 A_gnd', 'A = πR² = πD²/4', 'A = π × ' + formatNum(D, 3) + '² / 4', fmtArea(C.A_gnd), 'red');
+  html += row('总显示面积 A_total', 'A = A_hemi + A_wall + A_gnd', 'A = ' + fmtArea(C.A_hemi) + ' + ' + fmtArea(C.A_wall) + ' + ' + fmtArea(C.A_gnd), fmtArea(C.A_total), 'blue');
+
+  html += '<div class="section-title">② 像素规格</div>';
+  html += row('水平总像素 N_h', 'N_h = C / p = πD / p', 'N_h = π × ' + formatNum(D, 3) + ' / ' + formatNum(p, 2) + 'mm', C.Nh.toLocaleString() + ' px', 'blue');
+  html += row('垂直总像素 N_v', 'N_v = N_h / 2', 'N_v = ' + C.Nh.toLocaleString() + ' / 2', C.Nv.toLocaleString() + ' px', 'blue');
+  html += row('半球垂直像素 N_v,hemi', 'N_v,hemi = N_v / 2', 'N_v,hemi = ' + C.Nv.toLocaleString() + ' / 2', C.NvHemi.toLocaleString() + ' px');
+  html += row('墙面垂直像素 N_v,wall', 'N_v,wall = h / p', 'N_v,wall = ' + formatNum(h, 2) + 'm / ' + formatNum(p, 2) + 'mm', C.NvWall.toLocaleString() + ' px');
+  html += row('地面像素 N_gnd', 'N_gnd = D / p', 'N_gnd = ' + formatNum(D, 3) + 'm / ' + formatNum(p, 2) + 'mm', C.Ngnd.toLocaleString() + ' px', 'red');
+  html += row('总像素数 N_total', 'N_total = N_h × N_v', 'N_total = ' + C.Nh.toLocaleString() + ' × ' + C.Nv.toLocaleString(), fmtPx(C.N_total), 'blue');
+
+  html += '<div class="section-title">③ 分界与行映射</div>';
+  html += row('上分界角 φ_top', 'φ = arctan((h - h_eye) / R)', 'φ = arctan((' + formatNum(h, 2) + ' - ' + formatNum(P.h_eye, 2) + ') / ' + formatNum(R, 3) + ')', formatNum(C.phiTopRad, 4) + ' rad (' + formatNum(C.phiTopDeg, 2) + '°)', 'purple');
+  html += row('下分界角 φ_bot', 'φ = arctan(-h_eye / R)', 'φ = arctan(-' + formatNum(P.h_eye, 2) + ' / ' + formatNum(R, 3) + ')', formatNum(C.phiBotRad, 4) + ' rad (' + formatNum(C.phiBotDeg, 2) + '°)', 'purple');
+  html += row('上分界行号 Row_top', 'Row = round(N_v × (90° - φ°) / 180°)', 'Row = round(' + C.Nv.toLocaleString() + ' × (90 - ' + formatNum(C.phiTopDeg, 2) + ') / 180)', C.rowTop.toLocaleString(), 'purple');
+  html += row('下分界行号 Row_bot', 'Row = round(N_v × (90° - φ°) / 180°)', 'Row = round(' + C.Nv.toLocaleString() + ' × (90 - ' + formatNum(C.phiBotDeg, 2) + ') / 180)', C.rowBot.toLocaleString(), 'purple');
+  html += row('水平线行号 Row_horizon', 'Row = N_v / 2', 'Row = ' + C.Nv.toLocaleString() + ' / 2', C.rowHorizon.toLocaleString());
+  html += row('半球区行数', 'rows = Row_top', 'rows = ' + C.rowTop.toLocaleString(), C.rowsHemi.toLocaleString() + ' (' + formatNum(C.rowsHemiPct, 1) + '%)', 'orange');
+  html += row('墙面区行数', 'rows = Row_bot - Row_top', 'rows = ' + C.rowBot.toLocaleString() + ' - ' + C.rowTop.toLocaleString(), C.rowsWall.toLocaleString() + ' (' + formatNum(C.rowsWallPct, 1) + '%)', 'green');
+  html += row('地面区行数', 'rows = N_v - Row_bot', 'rows = ' + C.Nv.toLocaleString() + ' - ' + C.rowBot.toLocaleString(), C.rowsGround.toLocaleString() + ' (' + formatNum(C.rowsGroundPct, 1) + '%)', 'red');
+
+  html += '<div class="section-title">④ 人眼与质量指标</div>';
+  html += row('地面人眼FOV', 'FOV = 2 · arctan(R / h_eye)', 'FOV = 2 × arctan(' + formatNum(R, 3) + ' / ' + formatNum(P.h_eye, 2) + ')', formatNum(C.fovRad, 4) + ' rad (' + formatNum(C.fovDeg, 2) + '°)', 'green');
+  html += row('等效焦距 f', 'f = 36 / (2 · tan(FOV/2))', 'f = 36 / (2 × tan(' + formatNum(C.fovRad / 2, 4) + '))', formatNum(C.fl, 2) + ' mm', 'green');
+  html += row('PPD 角分辨率', 'PPD = N_h / 360°', 'PPD = ' + C.Nh.toLocaleString() + ' / 360', formatNum(C.ppd, 2) + ' px/°', 'blue');
+
+  html += '<div class="section-title">⑤ 分屏落地</div>';
+  html += row('主屏宽', 'min(chW, N_h)', 'min(' + C.chW.toLocaleString() + ', ' + C.Nh.toLocaleString() + ')', C.mainW.toLocaleString() + ' px', 'blue');
+  var nSubScreensF = C.hColCount - 1;
+  var remWStrF = (C.Nh - C.mainW).toLocaleString();
+  for (var ci2 = 1; ci2 < C.hColCount; ci2++) {
+    var cName2 = nSubScreensF > 1 ? '副屏' + ci2 + '宽' : '副屏宽';
+    var wF = C.hColWidths[ci2];
+    var cForm2, cCalc2;
+    if (nSubScreensF === 1) {
+      cForm2 = 'N_h − 主屏宽'; cCalc2 = remWStrF + '（取余）';
+    } else if (nSubScreensF === 2) {
+      cForm2 = '(N_h − 主屏宽) / 2'; cCalc2 = '(' + remWStrF + ') / 2（均分）';
+    } else if (wF >= C.chW - 0.5) {
+      cForm2 = 'chW（满载）'; cCalc2 = 'chW = ' + C.chW.toLocaleString();
+    } else {
+      cForm2 = '余宽 − (n−1)×chW'; cCalc2 = remWStrF + ' − ' + (nSubScreensF - 1) + '×' + C.chW.toLocaleString() + '（取余）';
+    }
+    html += row(cName2, cForm2, cCalc2, wF.toLocaleString() + ' px', subColorNames[(ci2 - 1) % 4]);
+  }
+  html += row('顶面区高', 'N_v_hemi = Row_top', C.rowTop.toLocaleString(), C.topH.toLocaleString() + ' px (' + formatNum(C.rowsHemiPct, 1) + '%)', 'orange');
+  html += row('墙面区高', 'N_v_wall = Row_bot − Row_top', C.rowBot.toLocaleString() + ' − ' + C.rowTop.toLocaleString(), C.wallH.toLocaleString() + ' px (' + formatNum(C.rowsWallPct, 1) + '%)', 'green');
+  // 各区屏幕推导
+  function emitFormulaScreens(zoneName, screens) {
+    screens.sort(function(a, b) { return a.type === 'main' ? -1 : (b.type === 'main' ? 1 : 0); });
+    var suppCount = screens.filter(function(s) { return s.type !== 'main'; }).length;
+    var sIdx = 0;
+    screens.forEach(function(s) {
+      var sName, sColor;
+      if (s.type === 'main') {
+        sName = zoneName + '主屏';
+        sColor = 'blue';
+      } else {
+        sIdx++;
+        sName = suppCount > 1 ? zoneName + '副屏' + pad2(sIdx) : zoneName + '副屏';
+        sColor = subColorNames[(sIdx - 1) % 4];
+      }
+      var sFormula = s.w.toLocaleString() + ' × ' + s.h.toLocaleString() + ' px';
+      html += row(sName, '列宽 × 区高', sFormula, sFormula, sColor);
+    });
+  }
+  emitFormulaScreens('顶面', C.erpScreens.filter(function(s) { return s.zone === 'top'; }));
+  emitFormulaScreens('墙面', C.erpScreens.filter(function(s) { return s.zone === 'wall'; }));
+  html += row('地面通道数', 'ceil(N_gnd/chW) × ceil(N_gnd/chH)', 'ceil(' + C.Ngnd.toLocaleString() + '/' + C.chW.toLocaleString() + ') × ceil(' + C.Ngnd.toLocaleString() + '/' + C.chH.toLocaleString() + ')', C.gndChannels + ' 通道', 'red');
+  html += row('总通道数', 'ERP主副 + 地面', C.erpScreens.length + ' + ' + C.gndChannels, C.totalChannels + ' 通道', 'orange');
+
+  return html;
+}
+
+function updateMappingDetail() {
+  var el = document.getElementById('mappingDetail');
+  if (!el) return;
+  el.innerHTML = buildMappingDetailHTML();
+}
+
+// ==================== 分屏落地（面板显示） ====================
+function updateMultiScreen() {
+  var P = getParams();
+  var C = computeAll(P);
+  var tc = tColors();
+  var subCssVars = ['var(--c-orange)', 'var(--c-teal)', 'var(--c-magenta)', 'var(--c-brown)'];
+
+  var html = '';
+
+  // 大字：总通道数
+  html += '<div class="ms-big">';
+  html += '<div class="ms-label">总通道数</div>';
+  html += '<div class="ms-value" style="color:var(--c-orange)">' + C.totalChannels + '<span style="font-size:13px;color:var(--text-sec);margin-left:4px">通道</span></div>';
+  html += '</div>';
+
+  // 屏幕列表 — 与输出示意图命名一致（按区分屏：主屏最大 + 副屏补余）
+  html += '<div class="section-title">屏幕清单（共 ' + C.totalChannels + ' 块）</div>';
+
+  function pad2(n) { return n < 10 ? '0' + n : '' + n; }
+
+  function emitScreenList(screens, zoneName) {
+    // 排序：主屏在前
+    screens.sort(function(a, b) {
+      if (a.type === 'main' && b.type !== 'main') return -1;
+      if (a.type !== 'main' && b.type === 'main') return 1;
+      return 0;
+    });
+    var suppCount = screens.filter(function(s) { return s.type !== 'main'; }).length;
+    var subIdx = 0;
+    screens.forEach(function(s) {
+      var name;
+      var colorClass;
+      var inlineColor = '';
+      if (s.type === 'main') { name = zoneName + '主屏'; colorClass = 'bl'; }
+      else if (s.type === 'gnd') { subIdx++; name = suppCount > 1 ? '地面屏' + pad2(subIdx) : '地面屏'; colorClass = 'rd'; }
+      else {
+        subIdx++;
+        name = suppCount > 1 ? zoneName + '副屏' + pad2(subIdx) : zoneName + '副屏';
+        colorClass = '';
+        inlineColor = ' style="color:' + subCssVars[(subIdx - 1) % 4] + '"';
+      }
+      var valClass = colorClass ? 'value ' + colorClass : 'value';
+      html += '<div class="data-row"><span class="label">' + name + '</span><span class="' + valClass + '"' + inlineColor + '>' + s.w.toLocaleString() + ' × ' + s.h.toLocaleString() + ' px</span></div>';
+    });
+  }
+
+  emitScreenList(C.erpScreens.filter(function(s) { return s.zone === 'top'; }), '顶面');
+  emitScreenList(C.erpScreens.filter(function(s) { return s.zone === 'wall'; }), '墙面');
+  emitScreenList(C.gndScreens, '地面');
+
+  // 折叠区：详细分屏参数
+  html += '<div class="mapping-collapse-toggle" id="multiToggle" onclick="toggleMultiDetail()">';
+  html += '<span class="toggle-label">详细分屏参数</span>';
+  html += '<span class="toggle-arrow">▶</span>';
+  html += '</div>';
+  html += '<div class="mapping-detail-wrap" id="multiDetailWrap">';
+
+  html += '<div class="section-title">硬件限制</div>';
+  html += '<div class="data-row"><span class="label">通道分辨率</span><span class="value bl">' + C.chW.toLocaleString() + ' × ' + C.chH.toLocaleString() + ' px</span></div>';
+  html += '<div class="data-row"><span class="label">全景图尺寸</span><span class="value bl">' + C.Nh.toLocaleString() + ' × ' + C.Nv.toLocaleString() + ' px</span></div>';
+
+  html += '<div class="section-title">横向分屏（主屏优先 + 副屏逐步满载）</div>';
+  html += '<div class="data-row"><span class="label">主屏宽</span><span class="value gr">min(' + C.chW.toLocaleString() + ', ' + C.Nh.toLocaleString() + ') = ' + C.mainW.toLocaleString() + ' px</span></div>';
+  var nSubScreens = C.hColCount - 1;
+  var remWStr = (C.Nh - C.mainW).toLocaleString();
+  for (var ci = 1; ci < C.hColCount; ci++) {
+    var cColName = nSubScreens > 1 ? '副屏' + ci + '宽' : '副屏宽';
+    var w = C.hColWidths[ci];
+    var cFormula;
+    if (nSubScreens === 1) {
+      cFormula = remWStr + '（取余）';
+    } else if (nSubScreens === 2) {
+      cFormula = '(' + remWStr + ') / 2（均分）';
+    } else if (w >= C.chW - 0.5) {
+      cFormula = 'chW = ' + C.chW.toLocaleString() + '（满载）';
+    } else {
+      cFormula = remWStr + ' − ' + (nSubScreens - 1) + '×' + C.chW.toLocaleString() + '（取余）';
+    }
+    html += '<div class="data-row"><span class="label">' + cColName + '</span><span class="value gr">' + cFormula + ' = ' + w.toLocaleString() + ' px</span></div>';
+  }
+  html += '<div class="data-row"><span class="label">主屏覆盖</span><span class="value gr">' + formatNum(C.mainHDeg, 1) + '°（正面）</span></div>';
+
+  // 各区屏幕详情（从 erpScreens 动态生成，含纵向分裂）
+  function emitZoneDetail(zoneName, screens, zoneH, zonePct) {
+    html += '<div class="section-title">' + zoneName + '区（区高 ' + zoneH.toLocaleString() + ' 行 / ' + formatNum(zonePct, 1) + '%）</div>';
+    // 排序：主屏在前
+    screens.sort(function(a, b) { return a.type === 'main' ? -1 : (b.type === 'main' ? 1 : 0); });
+    var suppCount = screens.filter(function(s) { return s.type !== 'main'; }).length;
+    var subIdx = 0;
+    screens.forEach(function(s) {
+      var name, valClass, inlineColor = '';
+      if (s.type === 'main') {
+        name = zoneName + '主屏';
+        valClass = 'value bl';
+      } else {
+        subIdx++;
+        name = suppCount > 1 ? zoneName + '副屏' + pad2(subIdx) : zoneName + '副屏';
+        valClass = 'value';
+        inlineColor = ' style="color:' + subCssVars[(subIdx - 1) % 4] + '"';
+      }
+      html += '<div class="data-row"><span class="label">' + name + '</span><span class="' + valClass + '"' + inlineColor + '>' + s.w.toLocaleString() + ' × ' + s.h.toLocaleString() + ' px</span></div>';
+    });
+  }
+  emitZoneDetail('顶面', C.erpScreens.filter(function(s) { return s.zone === 'top'; }), C.topH, C.rowsHemiPct);
+  emitZoneDetail('墙面', C.erpScreens.filter(function(s) { return s.zone === 'wall'; }), C.wallH, C.rowsWallPct);
+
+  html += '<div class="section-title">地面屏</div>';
+  html += '<div class="data-row"><span class="label">地面像素</span><span class="value rd">' + C.Ngnd.toLocaleString() + ' × ' + C.Ngnd.toLocaleString() + ' px</span></div>';
+  html += '<div class="data-row"><span class="label">地面分屏</span><span class="value rd">' + C.gndScrW + ' × ' + C.gndScrH + ' 屏（每块 ' + C.gndCellW.toLocaleString() + ' × ' + C.gndCellH.toLocaleString() + ' px）</span></div>';
+
+  html += '<div class="section-title">通道汇总</div>';
+  html += '<div class="data-row"><span class="label">ERP通道</span><span class="value hl">' + C.erpScreens.length + '</span></div>';
+  html += '<div class="data-row"><span class="label">地面通道</span><span class="value hl">' + C.gndScreens.length + '</span></div>';
+
+  html += '</div>';
+
+  document.getElementById('multiScreen').innerHTML = html;
+}
+
+function toggleMultiDetail() {
+  var toggle = document.getElementById('multiToggle');
+  var wrap = document.getElementById('multiDetailWrap');
+  if (!toggle || !wrap) return;
+  toggle.classList.toggle('expanded');
+  wrap.classList.toggle('expanded');
+}
+
+// ==================== 映射示意图 ====================
+function drawElevation() {
+  var P = getParams();
+  var C = computeAll(P);
+  var R = C.R, h = P.h, he = P.h_eye;
+  var tc = tColors();
+
+  // 确保容器有尺寸（面板被隐藏时不重试）
+  var container = document.getElementById('jxgbox');
+  var elevPanel = document.getElementById('viewElevation');
+  if (!container || container.clientWidth < 10 || container.clientHeight < 10) {
+    if (elevPanel && elevPanel.classList.contains('window-hidden')) return;
+    setTimeout(drawElevation, 100);
+    return;
+  }
+
+  var maxDist = Math.max(
+    h + R - he,
+    Math.sqrt(R * R + (h - he) * (h - he)),
+    Math.sqrt(R * R + he * he),
+    R
+  );
+  var R_big = maxDist * 1.2;
+  var pad = Math.max(R_big * 0.25, 1.5);
+
+  board = JXG.JSXGraph.initBoard('jxgbox', {
+    boundingbox: [-R_big - pad, h + R + pad * 0.8, R_big + pad, -pad * 0.8],
+    axis: true,
+    grid: false,
+    keepAspectRatio: true,
+    showCopyright: false,
+    showNavigation: false,
+    pan: { enabled: false },
+    zoom: { enabled: false },
+    defaultAxes: {
+      x: { strokeColor: tc.axis, ticks: { strokeColor: tc.axis, majorHeight: 4, minorHeight: 0, label: { fontSize: 8, color: tc.textMuted } } },
+      y: { strokeColor: tc.axis, ticks: { strokeColor: tc.axis, majorHeight: 4, minorHeight: 0, label: { fontSize: 8, color: tc.textMuted } } }
+    }
+  });
+
+  var unit = Math.max(R / 4, 0.5);
+
+  // 大球
+  board.create('circle', [[0, he], R_big], {
+    strokeColor: tc.blue, strokeWidth: 1.5, dash: 3, fillColor: tc.blue, fillOpacity: 0.02, name: ''
+  });
+  board.create('text', [R_big - unit, he + R_big / 2, '大球\n(全景图域)'], { fontSize: 10, color: tc.blue, anchorX: 'right' });
+
+  // 地面
+  board.create('segment', [[-R, 0], [R, 0]], { strokeColor: tc.red, strokeWidth: 4, name: '' });
+  board.create('text', [0, -unit * 0.3, '地面 z=0  D=' + formatNum(P.D, 3) + 'm'], { fontSize: 10, color: tc.red, anchorX: 'middle' });
+
+  // 墙面
+  board.create('segment', [[-R, 0], [-R, h]], { strokeColor: tc.green, strokeWidth: 5, name: '' });
+  board.create('segment', [[R, 0], [R, h]], { strokeColor: tc.green, strokeWidth: 5, name: '' });
+  board.create('text', [-R - unit * 0.3, h / 2, '墙面\nh=' + formatNum(h, 2) + 'm'], { fontSize: 10, color: tc.green, anchorX: 'right' });
+
+  // 半球
+  board.create('curve', [
+    function (t) { return R * Math.cos(t); },
+    function (t) { return h + R * Math.sin(t); },
+    0, Math.PI
+  ], { strokeColor: tc.orange, strokeWidth: 4, name: '' });
+  board.create('text', [0, h + R + unit * 0.3, '半球 R=' + formatNum(R, 3) + 'm'], { fontSize: 10, color: tc.orange, anchorX: 'middle' });
+
+  // 人眼位置
+  board.create('point', [0, he], {
+    name: 'C', size: 7, face: 'o', strokeColor: tc.yellow, fillColor: tc.yellow,
+    label: { fontSize: 13, color: tc.yellow, offset: [-12, 5], anchorX: 'right' }
+  });
+  board.create('text', [-unit * 0.1, he + unit * 0.2, '(0,' + formatNum(he, 2) + ')'], { fontSize: 9, color: tc.yellow, anchorX: 'right' });
+
+  // 分界射线
+  var phiTop = C.phiTopRad, phiBot = C.phiBotRad;
+  var extLen = R + pad;
+  board.create('segment', [[0, he], [extLen, he + extLen * Math.tan(phiTop)]], { strokeColor: tc.purple, strokeWidth: 2, dash: 2, name: '' });
+  board.create('segment', [[0, he], [extLen, he + extLen * Math.tan(phiBot)]], { strokeColor: tc.purple, strokeWidth: 2, dash: 2, name: '' });
+
+  // 分界点
+  board.create('point', [R, h], { name: '', size: 4, face: 'o', strokeColor: tc.purple, fillColor: tc.purple });
+  board.create('point', [R, 0], { name: '', size: 4, face: 'o', strokeColor: tc.purple, fillColor: tc.purple });
+  board.create('text', [R + unit * 0.1, h, 'Row ' + C.rowTop.toLocaleString()], { fontSize: 11, color: tc.purple, fontWeight: 'bold' });
+  board.create('text', [R + unit * 0.1, unit * 0.05, 'Row ' + C.rowBot.toLocaleString()], { fontSize: 11, color: tc.purple, fontWeight: 'bold' });
+
+  // 角度弧
+  var arcR = Math.max(unit * 0.6, 0.5);
+  board.create('curve', [
+    function (t) { return arcR * Math.cos(t); },
+    function (t) { return he + arcR * Math.sin(t); },
+    phiBot, phiTop
+  ], { strokeColor: tc.purple, strokeWidth: 1.5, fillColor: tc.purple, fillOpacity: 0.08 });
+
+  // 水平线
+  board.create('segment', [[0, he], [R + pad * 0.5, he]], { strokeColor: tc.textSec, strokeWidth: 1, dash: 1, name: '' });
+
+  // 区域标签
+  board.create('text', [R + pad * 0.3, h + R / 2, '← 半球\n' + formatNum(C.rowsHemiPct, 1) + '%'], { fontSize: 10, color: tc.orange, fontWeight: 'bold' });
+  board.create('text', [R + pad * 0.3, h / 2, '← 墙面\n' + formatNum(C.rowsWallPct, 1) + '%'], { fontSize: 10, color: tc.green, fontWeight: 'bold' });
+  board.create('text', [R + pad * 0.3, -unit * 0.2, '← 地面\n' + formatNum(C.rowsGroundPct, 1) + '%'], { fontSize: 10, color: tc.red, fontWeight: 'bold' });
+
+  board.fullUpdate();
+}
+
+// 将弧度转换为钟点（1-12，四舍五入到最近整点）
+function radToClock(rad) {
+  var h = 3 - rad * 6 / Math.PI;   // 12点=π/2 → h=0→12；3点=0 → h=3；6点=-π/2 → h=6
+  h = ((h % 12) + 12) % 12;
+  if (h === 0) h = 12;
+  return Math.round(h);
+}
+
+// ==================== 分屏示意图（俯视图） ====================
+function drawTopView() {
+  var P = getParams();
+  var C = computeAll(P);
+  var R = C.R;
+  var tc = tColors();
+  var pad = Math.max(R * 0.55, 1.8);
+
+  // 确保容器有尺寸（面板被隐藏时不重试）
+  var container = document.getElementById('jxgboxTop');
+  var topPanel = document.getElementById('viewTop');
+  if (!container || container.clientWidth < 10 || container.clientHeight < 10) {
+    if (topPanel && topPanel.classList.contains('window-hidden')) return;
+    setTimeout(drawTopView, 100);
+    return;
+  }
+
+  boardTop = JXG.JSXGraph.initBoard('jxgboxTop', {
+    boundingbox: [-R - pad, R + pad, R + pad, -R - pad],
+    axis: false,
+    grid: false,
+    keepAspectRatio: true,
+    showCopyright: false,
+    showNavigation: false,
+    pan: { enabled: false },
+    zoom: { enabled: false }
+  });
+
+  var unit = Math.max(R / 5, 0.3);
+
+  // ===== 钟表定位盘（12等分，替代直角坐标系） =====
+  var clockR = R + pad * 0.93;          // 钟面半径，接近视口边缘
+  var tickOuter = clockR;                // 刻度外端
+  var tickInnerMajor = clockR * 0.88;    // 整点刻度内端（3/6/9/12）
+  var tickInnerMinor = clockR * 0.93;    // 其他刻度内端
+  var labelR = clockR + pad * 0.07;      // 钟点标签半径
+
+  // 钟面外圈（虚线）
+  boardTop.create('circle', [[0, 0], clockR], {
+    strokeColor: tc.axis, strokeWidth: 1, dash: 2, fillColor: 'transparent', name: ''
+  });
+
+  // 十字参考线（3-9 和 6-12）
+  boardTop.create('segment', [
+    [-clockR * 0.98, 0], [clockR * 0.98, 0]
+  ], { strokeColor: tc.axis, strokeWidth: 0.5, dash: 3, name: '' });
+  boardTop.create('segment', [
+    [0, -clockR * 0.98], [0, clockR * 0.98]
+  ], { strokeColor: tc.axis, strokeWidth: 0.5, dash: 3, name: '' });
+
+  // 12个钟点
+  for (var h = 1; h <= 12; h++) {
+    var hourAngle = Math.PI / 2 - h * Math.PI / 6;  // 12点 = 正上方，顺时针递增
+    var isMajor = (h % 3 === 0);  // 3/6/9/12 为整点
+    var tInner = isMajor ? tickInnerMajor : tickInnerMinor;
+
+    // 刻度线
+    boardTop.create('segment', [
+      [tInner * Math.cos(hourAngle), tInner * Math.sin(hourAngle)],
+      [tickOuter * Math.cos(hourAngle), tickOuter * Math.sin(hourAngle)]
+    ], {
+      strokeColor: tc.axis, strokeWidth: isMajor ? 1.5 : 1, name: ''
+    });
+
+    // 钟点数字
+    boardTop.create('text', [
+      labelR * Math.cos(hourAngle),
+      labelR * Math.sin(hourAngle),
+      h.toString()
+    ], {
+      fontSize: isMajor ? 12 : 10,
+      color: isMajor ? tc.textSec : tc.textMuted,
+      anchorX: 'middle', anchorY: 'middle',
+      fontWeight: isMajor ? 'bold' : 'normal'
+    });
+  }
+
+  // 门参数：1m宽，正下方
+  var doorW = 1.0;
+  var doorHalfAng = Math.asin(Math.min(doorW / 2 / R, 1));
+  var doorCenter = -Math.PI / 2;
+  var doorStart = doorCenter - doorHalfAng;
+  var doorEnd = doorCenter + doorHalfAng;
+
+  // LED墙圆（绿色），跳过门的位置 — 从doorEnd绕到doorStart+2π
+  boardTop.create('curve', [
+    function(t) { return R * Math.cos(t); },
+    function(t) { return R * Math.sin(t); },
+    doorEnd, doorStart + 2 * Math.PI
+  ], { strokeColor: tc.green, strokeWidth: 4, fillColor: tc.green, fillOpacity: 0.04, name: '' });
+
+  // 门标记
+  var dP1 = [R * Math.cos(doorStart), R * Math.sin(doorStart)];
+  var dP2 = [R * Math.cos(doorEnd), R * Math.sin(doorEnd)];
+  boardTop.create('segment', [dP1, dP2], { strokeColor: tc.red, strokeWidth: 3, dash: 1, name: '' });
+  boardTop.create('text', [0, -R - pad * 0.25, '门'], { fontSize: 12, color: tc.red, anchorX: 'middle', fontWeight: 'bold' });
+
+  // 主画面参数：正上方 = π/2
+  var forward = Math.PI / 2;
+  var halfMain = C.mainHDeg / 2 * Math.PI / 180;
+  if (halfMain > Math.PI) halfMain = Math.PI;
+  var mainStart = forward - halfMain;
+  var mainEnd = forward + halfMain;
+
+  // 主画面弧（蓝色高亮，在墙圆稍外侧）
+  boardTop.create('curve', [
+    function(t) { return R * 1.03 * Math.cos(t); },
+    function(t) { return R * 1.03 * Math.sin(t); },
+    mainStart, mainEnd
+  ], { strokeColor: tc.blue, strokeWidth: 6, fillColor: tc.blue, fillOpacity: 0.12, highlight: false });
+
+  // 副屏弧（每块独立绘制，不同颜色区分）
+  var subColors = subScreenColors(tc);
+  if (C.hColCount > 1) {
+    var cumAng = mainEnd;
+    for (var si = 1; si < C.hColCount; si++) {
+      var sColDeg = C.hColWidths[si] / C.ppd;
+      var sStart = cumAng;
+      var sEnd = cumAng + sColDeg * Math.PI / 180;
+      if (sEnd > mainStart + 2 * Math.PI) sEnd = mainStart + 2 * Math.PI;
+      var sc = subColors[(si - 1) % subColors.length];
+      boardTop.create('curve', [
+        function(t) { return R * 1.03 * Math.cos(t); },
+        function(t) { return R * 1.03 * Math.sin(t); },
+        sStart, sEnd
+      ], { strokeColor: sc, strokeWidth: 5, fillColor: sc, fillOpacity: 0.10, highlight: false });
+      cumAng = sEnd;
+    }
+  }
+
+  // 分界虚线 — 主画面两侧（紫色）
+  var lineExt = 1.18;
+  boardTop.create('segment', [
+    [0, 0], [R * lineExt * Math.cos(mainStart), R * lineExt * Math.sin(mainStart)]
+  ], { strokeColor: tc.purple, strokeWidth: 2, dash: 2, name: '' });
+  boardTop.create('segment', [
+    [0, 0], [R * lineExt * Math.cos(mainEnd), R * lineExt * Math.sin(mainEnd)]
+  ], { strokeColor: tc.purple, strokeWidth: 2, dash: 2, name: '' });
+
+  // 人眼位置
+  boardTop.create('point', [0, 0], {
+    name: 'C', size: 7, face: 'o', strokeColor: tc.yellow, fillColor: tc.yellow,
+    label: { fontSize: 14, color: tc.yellow, offset: [-15, -15] }
+  });
+
+  // 前方箭头（正上方）
+  boardTop.create('arrow', [[0, 0], [0, R + pad * 0.3]], {
+    strokeColor: tc.textSec, strokeWidth: 1.5, dash: 1, name: ''
+  });
+  boardTop.create('text', [unit * 0.3, R + pad * 0.25, '前方'], { fontSize: 10, color: tc.textSec });
+
+  // 主画面标签（正上方外侧）
+  var labelR = R * 1.3;
+  var mainEndClock = radToClock(mainEnd);
+  var mainStartClock = radToClock(mainStart);
+  boardTop.create('text', [
+    labelR * Math.cos(forward), labelR * Math.sin(forward),
+    '主屏 ' + C.mainW.toLocaleString() + 'px 占' + formatNum(C.mainHDeg, 1) + '°（' + mainEndClock + '点→' + mainStartClock + '点方向）'
+  ], { fontSize: 12, color: tc.blue, anchorX: 'middle', fontWeight: 'bold' });
+
+  // 副屏标签 — 紧跟弧线中点，颜色与弧线一致，标注钟点方向
+  if (C.hColCount > 1) {
+    var sCumAng = mainEnd;  // 从主屏结束处开始累积（弧度）
+    for (var i = 1; i < C.hColCount; i++) {
+      var colDeg = C.hColWidths[i] / C.ppd;
+      var colRad = colDeg * Math.PI / 180;
+      var sMid = sCumAng + colRad / 2;   // 弧线中点
+      var sLabelR = R * 0.55;
+      var sName = C.hColCount > 2 ? '副屏' + i : '副屏';
+      var sColor = subColors[(i - 1) % subColors.length];
+      var sStartClock = radToClock(sCumAng);
+      var sEndClock = radToClock(sCumAng + colRad);
+      boardTop.create('text', [
+        sLabelR * Math.cos(sMid), sLabelR * Math.sin(sMid),
+        sName + ' ' + C.hColWidths[i].toLocaleString() + 'px 占' + formatNum(colDeg, 1) + '°（' + sEndClock + '点→' + sStartClock + '点方向）'
+      ], { fontSize: 10, color: sColor, anchorX: 'middle', fontWeight: 'bold' });
+      sCumAng += colRad;   // 累积弧度
+    }
+  }
+
+  // 分界角度标签
+  var halfDeg = C.mainHDeg / 2;
+  boardTop.create('text', [
+    R * 1.35 * Math.cos(mainStart), R * 1.35 * Math.sin(mainStart),
+    '-' + formatNum(halfDeg, 0) + '°'
+  ], { fontSize: 9, color: tc.purple, anchorX: 'middle' });
+  boardTop.create('text', [
+    R * 1.35 * Math.cos(mainEnd), R * 1.35 * Math.sin(mainEnd),
+    '+' + formatNum(halfDeg, 0) + '°'
+  ], { fontSize: 9, color: tc.purple, anchorX: 'middle' });
+
+  // LED墙标签
+  boardTop.create('text', [
+    R + pad * 0.2, -R * 0.35,
+    'LED墙 R=' + formatNum(R, 2) + 'm\n周长=' + formatNum(C.C, 1) + 'm'
+  ], { fontSize: 10, color: tc.green, anchorX: 'left' });
+
+  boardTop.fullUpdate();
+}
+
+// ==================== 输出示意图（三行：顶面 / 墙面 / 地面） ====================
+function drawOutputDiagram() {
+  var P = getParams();
+  var C = computeAll(P);
+  var tc = tColors();
+
+  // 三区域分类
+  var topScreens = [];
+  var wallScreens = [];
+  var gndScreens = [];
+
+  // 复用 computeAll 的按区分屏结果（主屏最大 + 副屏补余，垂直已分区）
+  C.erpScreens.forEach(function(s) {
+    if (s.zone === 'top') topScreens.push(s);
+    else if (s.zone === 'wall') wallScreens.push(s);
+  });
+  C.gndScreens.forEach(function(s) { gndScreens.push(s); });
+
+  // 缩放：最大边映射到 130px
+  var allScreens = topScreens.concat(wallScreens, gndScreens);
+  var maxDim = 0;
+  allScreens.forEach(function(s) { maxDim = Math.max(maxDim, s.w, s.h); });
+  var scale = 130 / maxDim;
+
+  // 颜色映射（主题自适应）
+  function hexToRgba(hex, a) {
+    if (!hex || hex[0] !== '#' || hex.length < 7) return 'rgba(128,128,128,' + a + ')';
+    var r = parseInt(hex.slice(1, 3), 16);
+    var g = parseInt(hex.slice(3, 5), 16);
+    var b = parseInt(hex.slice(5, 7), 16);
+    return 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';
+  }
+  function chColor(type, subIdx) {
+    if (type === 'main') return { border: tc.blue, bg: hexToRgba(tc.blue, 0.1), text: tc.blue };
+    if (type === 'supp') {
+      var sc = subScreenColors(tc)[(subIdx - 1) % 4];
+      return { border: sc, bg: hexToRgba(sc, 0.08), text: sc };
+    }
+    return { border: tc.red, bg: hexToRgba(tc.red, 0.06), text: tc.red };
+  }
+
+  function pad2(n) { return n < 10 ? '0' + n : '' + n; }
+
+  // 构建分区数据
+  var sections = [
+    { title: '顶面', screens: topScreens, zoneName: '顶面', coord: '像素行 0 ~ ' + C.rowTop.toLocaleString() + '（' + C.topH.toLocaleString() + ' 行） / 共 ' + C.Nh.toLocaleString() + ' 列' },
+    { title: '墙面', screens: wallScreens, zoneName: '墙面', coord: '像素行 ' + C.rowTop.toLocaleString() + ' ~ ' + C.rowBot.toLocaleString() + '（' + C.wallH.toLocaleString() + ' 行） / 共 ' + C.Nh.toLocaleString() + ' 列' },
+    { title: '地面', screens: gndScreens, zoneName: '地面', coord: '地面渲染 · ' + C.Ngnd.toLocaleString() + ' × ' + C.Ngnd.toLocaleString() + ' px（' + C.gndScreens.length + ' 通道）' }
+  ];
+
+  // 排序：主屏在前
+  sections.forEach(function(sec) {
+    sec.screens.sort(function(a, b) {
+      if (a.type === 'main' && b.type !== 'main') return -1;
+      if (a.type !== 'main' && b.type === 'main') return 1;
+      return 0;
+    });
+  });
+
+  // 构建扁平矩形数据（用于原地更新或全量重建）
+  function getRectName(ch, zoneName, suppCount, subIdx) {
+    if (ch.type === 'main') return zoneName + '主屏';
+    if (ch.type === 'gnd') return suppCount > 1 ? '地面屏' + pad2(subIdx) : '地面屏';
+    return suppCount > 1 ? zoneName + '副屏' + pad2(subIdx) : zoneName + '副屏';
+  }
+
+  var rectData = [];
+  sections.forEach(function(sec) {
+    if (sec.screens.length === 0) return;
+    var suppCount = sec.screens.filter(function(ch) { return ch.type !== 'main'; }).length;
+    var subIdx = 0;
+    sec.screens.forEach(function(ch) {
+      var rw = Math.max(Math.round(ch.w * scale), 70);
+      var rh = Math.max(Math.round(ch.h * scale), 55);
+      if (ch.type !== 'main') subIdx++;
+      var col = chColor(ch.type, subIdx);
+      var name = getRectName(ch, sec.zoneName, suppCount, subIdx);
+      rectData.push({
+        rw: rw, rh: rh,
+        borderColor: col.border, bgColor: col.bg, textColor: col.text,
+        name: name,
+        dims: ch.w.toLocaleString() + ' × ' + ch.h.toLocaleString() + ' px'
+      });
+    });
+  });
+
+  var el = document.getElementById('outputDiagram');
+  if (!el) return;
+
+  // 检查是否可原地更新（矩形数量不变时）
+  var existingRects = el.querySelectorAll('.output-rect');
+  var sig = String(rectData.length);
+  var oldSig = el.getAttribute('data-sig');
+
+  if (oldSig === sig && existingRects.length === rectData.length) {
+    // 原地更新——CSS transition 自动动画
+    rectData.forEach(function(r, i) {
+      var rect = existingRects[i];
+      rect.style.minWidth = r.rw + 'px';
+      rect.style.minHeight = r.rh + 'px';
+      rect.style.borderColor = r.borderColor;
+      rect.style.background = r.bgColor;
+      var nameEl = rect.querySelector('.rect-name');
+      var dimsEl = rect.querySelector('.rect-dims');
+      if (nameEl) { nameEl.textContent = r.name; nameEl.style.color = r.textColor; }
+      if (dimsEl) dimsEl.textContent = r.dims;
+    });
+    // 更新总计
+    var totalEl = el.querySelector('.output-total');
+    if (totalEl) {
+      totalEl.innerHTML = '共 <strong style="color:' + tc.orange + ';font-size:14px">' + C.totalChannels + '</strong> 通道（ERP ' + C.erpScreens.length + ' + 地面 ' + C.gndScreens.length + '）';
+    }
+    // 更新坐标标注
+    var coordEls = el.querySelectorAll('.section-coord');
+    sections.forEach(function(sec, i) {
+      if (coordEls[i]) coordEls[i].textContent = sec.coord;
+    });
+  } else {
+    // 结构变化——全量重建
+    var html = '';
+    sections.forEach(function(sec) {
+      if (sec.screens.length === 0) return;
+      var suppCount2 = sec.screens.filter(function(ch) { return ch.type !== 'main'; }).length;
+      html += '<div class="output-section">';
+      html += '<div class="output-section-title">' + sec.title + '（' + sec.screens.length + '屏）</div>';
+      html += '<div class="section-coord">' + sec.coord + '</div>';
+      html += '<div class="output-row">';
+      var subIdx2 = 0;
+      sec.screens.forEach(function(ch) {
+        var rw = Math.max(Math.round(ch.w * scale), 70);
+        var rh = Math.max(Math.round(ch.h * scale), 55);
+        if (ch.type !== 'main') subIdx2++;
+        var col = chColor(ch.type, subIdx2);
+        var name = getRectName(ch, sec.zoneName, suppCount2, subIdx2);
+        html += '<div class="output-rect" style="min-width:' + rw + 'px;min-height:' + rh + 'px;border-color:' + col.border + ';background:' + col.bg + ';color:' + col.text + '">';
+        html += '<div class="rect-name" style="color:' + col.text + '">' + name + '</div>';
+        html += '<div class="rect-dims">' + ch.w.toLocaleString() + ' × ' + ch.h.toLocaleString() + ' px</div>';
+        html += '</div>';
+      });
+      html += '</div></div>';
+    });
+    html += '<div class="output-total" style="flex-shrink:0;font-size:12px;color:' + tc.textSec + ';padding:4px 8px;white-space:nowrap">';
+    html += '共 <strong style="color:' + tc.orange + ';font-size:14px">' + C.totalChannels + '</strong> 通道';
+    html += '（ERP ' + C.erpScreens.length + ' + 地面 ' + C.gndScreens.length + '）';
+    html += '</div>';
+    el.innerHTML = html;
+    el.setAttribute('data-sig', sig);
+  }
+}
+
+// ==================== 示意图交互（左键/中键平移 + 滚轮缩放） ====================
+function setupDiagramInteractions() {
+  function setup(containerId, getBoardFn) {
+    var container = document.getElementById(containerId);
+    if (!container) return;
+
+    var panning = false;
+    var lastX = 0, lastY = 0;
+
+    // 鼠标按下 → 开始平移（左键 button=0 或 中键 button=1）
+    // 用 capture:true 在 JSXGraph 的 SVG 处理之前拦截事件
+    container.addEventListener('mousedown', function(e) {
+      if (e.button === 0 || e.button === 1) {
+        e.preventDefault();
+        e.stopPropagation();
+        panning = true;
+        lastX = e.clientX;
+        lastY = e.clientY;
+        container.style.cursor = 'grabbing';
+      }
+    }, { capture: true });
+
+    // 鼠标移动 → 平移
+    document.addEventListener('mousemove', function(e) {
+      if (!panning) return;
+      var b = getBoardFn();
+      if (!b) { panning = false; return; }
+      var dx = e.clientX - lastX;
+      var dy = e.clientY - lastY;
+      lastX = e.clientX;
+      lastY = e.clientY;
+
+      var bb = b.getBoundingBox(); // [x1, y1_top, x2, y2_bottom]
+      var w = container.clientWidth;
+      var h = container.clientHeight;
+      if (w === 0 || h === 0) return;
+
+      // 像素位移 → 坐标位移
+      var shiftX = -(bb[2] - bb[0]) * dx / w;
+      var shiftY = (bb[1] - bb[3]) * dy / h;
+
+      b.setBoundingBox([
+        bb[0] + shiftX, bb[1] + shiftY,
+        bb[2] + shiftX, bb[3] + shiftY
+      ], false);
+    });
+
+    // 鼠标松开 → 停止平移
+    document.addEventListener('mouseup', function() {
+      if (panning) {
+        panning = false;
+        container.style.cursor = 'grab';
+      }
+    });
+
+    // 阻止中键自动滚动
+    container.addEventListener('auxclick', function(e) {
+      if (e.button === 1) e.preventDefault();
+    }, { capture: true });
+
+    // 滚轮缩放（以鼠标位置为中心）—— 用 capture 确保先于 JSXGraph 处理
+    container.addEventListener('wheel', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      var b = getBoardFn();
+      if (!b) return;
+
+      var bb = b.getBoundingBox(); // [x1, y1_top, x2, y2_bottom]
+      var rect = container.getBoundingClientRect();
+      // 鼠标在容器内的比例位置
+      var mx = (e.clientX - rect.left) / rect.width;
+      var my = (e.clientY - rect.top) / rect.height;
+      // 鼠标对应的坐标位置
+      var bx = bb[0] + mx * (bb[2] - bb[0]);
+      var by = bb[3] + (1 - my) * (bb[1] - bb[3]);
+
+      // 缩放因子：滚轮向上(deltaY<0)放大，向下(deltaY>0)缩小
+      var factor = e.deltaY < 0 ? 1 / 1.15 : 1.15;
+
+      // 以鼠标位置为中心缩放
+      b.setBoundingBox([
+        bx - (bx - bb[0]) * factor,
+        by + (bb[1] - by) * factor,
+        bx + (bb[2] - bx) * factor,
+        by - (by - bb[3]) * factor
+      ], false);
+    }, { capture: true, passive: false });
+
+    // 鼠标悬停 → 显示手势光标
+    container.addEventListener('mouseenter', function() {
+      if (!panning) container.style.cursor = 'grab';
+    });
+    container.addEventListener('mouseleave', function() {
+      if (!panning) container.style.cursor = '';
+    });
+  }
+
+  setup('jxgbox', function() { return board; });
+  setup('jxgboxTop', function() { return boardTop; });
+}
+
+// ==================== 窗口管理（面板显示/隐藏） ====================
+var windowPanels = ['viewElevation', 'viewTop', 'viewOutput', 'cardInput', 'cardCost', 'cardMapping', 'cardMultiScreen'];
+
+function toggleWindow(panelId, menuItem) {
+  var el = document.getElementById(panelId);
+  if (!el) return;
+  var isHidden = el.classList.toggle('window-hidden');
+  if (menuItem) {
+    menuItem.classList.toggle('hidden', isHidden);
+  }
+  // 保存状态
+  var state = {};
+  windowPanels.forEach(function(id) {
+    var e = document.getElementById(id);
+    state[id] = e ? e.classList.contains('window-hidden') : false;
+  });
+  localStorage.setItem('rvr-windows', JSON.stringify(state));
+  // 自适应布局：两个示意图都隐藏时输出图占满
+  var elevHidden = document.getElementById('viewElevation').classList.contains('window-hidden');
+  var topHidden = document.getElementById('viewTop').classList.contains('window-hidden');
+  var outEl = document.getElementById('viewOutput');
+  if (elevHidden && topHidden) {
+    outEl.style.flex = '1';
+    outEl.style.maxHeight = 'none';
+  } else {
+    outEl.style.flex = '';
+    outEl.style.maxHeight = '';
+  }
+  // 示意图变化后需要重绘
+  setTimeout(function() {
+    onResize();
+    // 重绘示意图（容器尺寸可能变化）
+    if (board) { JXG.JSXGraph.freeBoard(board); board = null; }
+    if (boardTop) { JXG.JSXGraph.freeBoard(boardTop); boardTop = null; }
+    var el1 = document.getElementById('jxgbox');
+    var el2 = document.getElementById('jxgboxTop');
+    if (el1) el1.innerHTML = '';
+    if (el2) el2.innerHTML = '';
+    drawElevation();
+    drawTopView();
+  }, 50);
+}
+
+function restoreWindowStates() {
+  var saved = localStorage.getItem('rvr-windows');
+  if (!saved) return;
+  var state;
+  try { state = JSON.parse(saved); } catch(e) { return; }
+  windowPanels.forEach(function(id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    if (state[id]) {
+      el.classList.add('window-hidden');
+      // 同步菜单勾选状态
+      var menuItem = document.querySelector('.menu-item-check[onclick*="' + id + '"]');
+      if (menuItem) menuItem.classList.add('hidden');
+    }
+  });
+  // 自适应布局
+  var elevHidden = document.getElementById('viewElevation').classList.contains('window-hidden');
+  var topHidden = document.getElementById('viewTop').classList.contains('window-hidden');
+  var outEl = document.getElementById('viewOutput');
+  if (elevHidden && topHidden) {
+    outEl.style.flex = '1';
+    outEl.style.maxHeight = 'none';
+  }
+}
+
+// ==================== 响应式 ====================
+var _lastLayoutWide = null;
+var _resizeTimer = null;
+function onResize() {
+  // 检测横竖屏切换
+  var isWide = window.innerWidth / window.innerHeight > 1.2;
+  if (_lastLayoutWide !== null && _lastLayoutWide !== isWide) {
+    // 横竖屏切换 → 重绘所有图表
+    if (_resizeTimer) clearTimeout(_resizeTimer);
+    _resizeTimer = setTimeout(function() {
+      drawElevation();
+      drawTopView();
+      drawOutputDiagram();
+    }, 200);
+    _lastLayoutWide = isWide;
+    return;
+  }
+  _lastLayoutWide = isWide;
+  // 普通缩放 → 调整容器尺寸
+  var views = document.querySelectorAll('.view-half');
+  if (views.length >= 2) {
+    var w1 = views[0].clientWidth, h1 = views[0].clientHeight;
+    var w2 = views[1].clientWidth, h2 = views[1].clientHeight;
+    if (board && w1 > 0 && h1 > 0) board.resizeContainer(w1, h1);
+    if (boardTop && w2 > 0 && h2 > 0) boardTop.resizeContainer(w2, h2);
+  }
+}
+
+// ==================== 初始化 ====================
+window.addEventListener('load', function() {
+  // 应用保存的主题
+  var savedTheme = localStorage.getItem('rvr-theme') || 'dark';
+  setTheme(savedTheme);
+  // 应用保存的字体缩放
+  var savedScale = parseFloat(localStorage.getItem('rvr-font-scale')) || 1;
+  setFontScale(savedScale);
+  // 恢复窗口面板显示/隐藏状态
+  restoreWindowStates();
+  // setTheme → setTimeout(onParamChange, 50) 会自动执行：
+  //   updateResults + updateDataRows + updateMultiScreen + drawElevation + drawTopView
+  // 设置示意图交互（左键/中键平移 + 滚轮缩放）
+  setupDiagramInteractions();
+  // 初始化横竖屏状态，避免首次 onResize 触发重绘
+  _lastLayoutWide = window.innerWidth / window.innerHeight > 1.2;
+  // 延迟调用 onResize 确保图表尺寸正确
+  setTimeout(onResize, 300);
+});
+
+window.addEventListener('resize', onResize);
+</script>
+</body>
+</html>
