@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <title>RVR沉浸式空间参数化计算与可视化系统（半球圆柱体）</title>
+  <title>未命名项目1</title>
   <link rel="stylesheet" href="jsxgraph.css">
   <script src="jsxgraphcore.js"></script>
   <style>
@@ -75,8 +75,8 @@
     .app{display:flex;flex-direction:column;height:100vh}
 
     /* 第一行：软件名 + 文件状态 */
-    .topbar{display:flex;align-items:center;gap:12px;padding:6px 16px;background:var(--bg-panel);border-bottom:1px solid var(--border-c)}
-    .topbar h1{font-size:14px;color:var(--c-blue);white-space:nowrap}
+    .topbar{display:flex;align-items:center;gap:16px;padding:12px 32px;background:var(--bg-panel);border-bottom:1px solid var(--border-c)}
+    .topbar h1{font-size:28px;font-weight:600;color:var(--c-blue);white-space:nowrap}
     .badge{font-size:10px;background:var(--c-badge);color:#fff;border-radius:10px;padding:2px 8px;margin-left:8px}
     .topbar .filebar-status{font-size:11px;color:var(--text-muted);margin-left:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:300px}
 
@@ -318,7 +318,7 @@
 <div class="app">
   <!-- 第一行：软件名 + 文件名状态 -->
   <div class="topbar">
-    <h1>RVR沉浸式空间参数化计算与可视化系统（半球圆柱体）</h1>
+    <h1 id="projectTitle">未命名项目1</h1>
     <span class="filebar-status" id="fileStatus">未保存</span>
   </div>
 
@@ -610,7 +610,7 @@ function closeDialog(name) {
 
 // ==================== 字体缩放 ====================
 var FONT_SIZES = {
-  '.topbar h1': 14, '.topbar .filebar-status': 11,
+  '.topbar h1': 28, '.topbar .filebar-status': 11,
   '.menu-btn': 13, '.menu-item': 13, '.menu-item-check': 13, '.menu-item-check .check-box': 12,
   '.dialog-input-row label': 13, '.dialog-input-row label span': 11,
   '.dialog-input-row input[type=number]': 13,
@@ -721,10 +721,13 @@ function newParams() {
 
 function getParamsString() {
   var P = getParams();
+  var C = computeAll(P);
   var lines = [];
-  lines.push('# RVR 参数文件');
+  lines.push('# RVR 项目参数与计算结果文件');
   lines.push('# 生成时间: ' + new Date().toLocaleString('zh-CN'));
+  lines.push('# 项目: ' + (currentFileName ? currentFileName.replace(/\.[^.]+$/, '') : '未命名项目'));
   lines.push('');
+  lines.push('# ===== 一、输入参数 =====');
   lines.push('圆柱直径_D=' + P.D.toFixed(3));
   lines.push('圆柱高度_H=' + P.h.toFixed(2));
   lines.push('像素间距_p=' + (P.p * 1000).toFixed(2));
@@ -732,7 +735,7 @@ function getParamsString() {
   lines.push('通道宽度_W=' + P.chW);
   lines.push('通道高度_H=' + P.chH);
   lines.push('');
-  lines.push('# 屏幕造价配置');
+  lines.push('# ===== 二、屏幕造价配置 =====');
   ['top', 'wall', 'gnd'].forEach(function(z) {
     var sel = document.getElementById('zoneType_' + z);
     var price = document.getElementById('zonePrice_' + z);
@@ -741,6 +744,94 @@ function getParamsString() {
       lines.push('屏幕单价_' + z + '=' + price.value);
     }
   });
+  lines.push('');
+  lines.push('# ===== 三、计算结果（界面实时显示数据） =====');
+  lines.push('# -- 全景图与像素规格 --');
+  lines.push('全景图_水平像素_Nh=' + C.Nh.toLocaleString());
+  lines.push('全景图_垂直像素_Nv=' + C.Nv.toLocaleString());
+  lines.push('地面渲染像素_Ngnd=' + C.Ngnd.toLocaleString());
+  lines.push('总像素数_Ntotal=' + fmtPx(C.N_total));
+  lines.push('');
+  lines.push('# -- 面积与像素 --');
+  lines.push('结构半径_R=' + formatNum(C.R, 3) + ' m');
+  lines.push('圆柱周长_C=' + formatNum(C.C, 3) + ' m');
+  lines.push('半球表面积_A_hemi=' + fmtArea(C.A_hemi));
+  lines.push('圆柱侧面积_A_wall=' + fmtArea(C.A_wall));
+  lines.push('地面面积_A_gnd=' + fmtArea(C.A_gnd));
+  lines.push('总显示面积_A_total=' + fmtArea(C.A_total));
+  lines.push('半球垂直像素_Nv_hemi=' + C.NvHemi.toLocaleString() + ' px');
+  lines.push('墙面垂直像素_Nv_wall=' + C.NvWall.toLocaleString() + ' px');
+  lines.push('地面像素_Ngnd2=' + C.Ngnd.toLocaleString() + ' px');
+  lines.push('');
+  lines.push('# -- 分界角与行分布 --');
+  lines.push('上分界角_phiTop=' + formatNum(C.phiTopRad, 4) + ' rad (' + formatNum(C.phiTopDeg, 2) + '°)');
+  lines.push('下分界角_phiBot=' + formatNum(C.phiBotRad, 4) + ' rad (' + formatNum(C.phiBotDeg, 2) + '°)');
+  lines.push('上分界行号_RowTop=' + C.rowTop.toLocaleString());
+  lines.push('下分界行号_RowBot=' + C.rowBot.toLocaleString());
+  lines.push('水平线行号_RowHorizon=' + C.rowHorizon.toLocaleString());
+  lines.push('半球区行数=' + C.rowsHemi.toLocaleString() + ' (' + formatNum(C.rowsHemiPct, 1) + '%)');
+  lines.push('墙面区行数=' + C.rowsWall.toLocaleString() + ' (' + formatNum(C.rowsWallPct, 1) + '%)');
+  lines.push('地面区行数=' + C.rowsGround.toLocaleString() + ' (' + formatNum(C.rowsGroundPct, 1) + '%)');
+  lines.push('半球区行占比=' + formatNum(C.rowsHemiPct, 2) + '%');
+  lines.push('墙面区行占比=' + formatNum(C.rowsWallPct, 2) + '%');
+  lines.push('地面区行占比=' + formatNum(C.rowsGroundPct, 2) + '%');
+  lines.push('');
+  lines.push('# -- 沉浸质量 --');
+  lines.push('地面人眼FOV=' + formatNum(C.fovRad, 4) + ' rad (' + formatNum(C.fovDeg, 2) + '°)');
+  lines.push('等效焦距_f=' + formatNum(C.fl, 2) + ' mm');
+  lines.push('PPD_角分辨率=' + formatNum(C.ppd, 2) + ' px/°');
+  lines.push('半球像素密度=' + fmtLarge(C.NvHemi) + ' px/' + formatNum(C.R, 1) + 'm弧');
+  lines.push('墙面像素密度=' + fmtLarge(C.NvWall) + ' px/' + formatNum(P.h, 1) + 'm高');
+  lines.push('地面像素边长=' + C.Ngnd.toLocaleString() + ' px/边');
+  lines.push('');
+  lines.push('# -- 屏幕像素清单（多屏分裂） --');
+  lines.push('通道分辨率=' + C.chW.toLocaleString() + ' × ' + C.chH.toLocaleString() + ' px');
+  lines.push('主屏宽_mainW=' + C.mainW.toLocaleString() + ' px');
+  lines.push('主屏覆盖角度=' + formatNum(C.mainHDeg, 1) + '°（正面）');
+  lines.push('副屏列数=' + (C.hColCount - 1));
+  for (var ci = 1; ci < C.hColCount; ci++) {
+    lines.push('副屏列宽_' + ci + '=' + C.hColWidths[ci].toLocaleString() + ' px');
+  }
+  lines.push('顶面区高_topH=' + C.topH.toLocaleString() + ' px (' + formatNum(C.rowsHemiPct, 1) + '%)');
+  lines.push('墙面区高_wallH=' + C.wallH.toLocaleString() + ' px (' + formatNum(C.rowsWallPct, 1) + '%)');
+  lines.push('地面像素=' + C.Ngnd.toLocaleString() + ' × ' + C.Ngnd.toLocaleString() + ' px');
+  lines.push('地面分屏=' + C.gndScrW + ' × ' + C.gndScrH + ' 屏（每块 ' + C.gndCellW.toLocaleString() + ' × ' + C.gndCellH.toLocaleString() + ' px）');
+  lines.push('ERP通道数=' + C.erpScreens.length);
+  lines.push('地面通道数=' + C.gndScreens.length);
+  lines.push('总通道数=' + C.totalChannels);
+  lines.push('');
+  lines.push('# -- 屏幕清单（逐块） --');
+  if (C.erpScreens && C.erpScreens.length) {
+    C.erpScreens.forEach(function(s, i) {
+      lines.push('屏_' + (i + 1) + '_' + s.zone + '=' + s.w.toLocaleString() + ' × ' + s.h.toLocaleString() + ' px');
+    });
+  }
+  if (C.gndScreens && C.gndScreens.length) {
+    C.gndScreens.forEach(function(s, i) {
+      lines.push('地面屏_' + (i + 1) + '=' + s.w.toLocaleString() + ' × ' + s.h.toLocaleString() + ' px');
+    });
+  }
+  lines.push('');
+  lines.push('# -- 预估造价 --');
+  var costZones = [
+    { key: 'top', area: C.A_hemi, name: '顶面' },
+    { key: 'wall', area: C.A_wall, name: '墙面' },
+    { key: 'gnd', area: C.A_gnd, name: '地面' }
+  ];
+  var totalCost = 0;
+  costZones.forEach(function(z) {
+    var pe = document.getElementById('zonePrice_' + z.key);
+    var price = pe ? parseFloat(pe.value) : 0;
+    if (isNaN(price) || price < 0) price = 0;
+    var cost = price * z.area;
+    totalCost += cost;
+    lines.push('造价_' + z.name + '=' + fmtArea(z.area) + ' × ¥' + price.toLocaleString() + '/m² = ¥' + cost.toFixed(0));
+  });
+  var costStr;
+  if (totalCost >= 1e8) costStr = (totalCost / 1e8).toFixed(2) + ' 亿';
+  else if (totalCost >= 1e4) costStr = (totalCost / 1e4).toFixed(1) + ' 万';
+  else costStr = totalCost.toFixed(0);
+  lines.push('预估总造价=' + costStr + ' (¥ ' + totalCost.toFixed(0) + ')');
   return lines.join('\n');
 }
 
@@ -756,6 +847,9 @@ function saveParams() {
   a.download = currentFileName;
   a.click();
   document.getElementById('fileStatus').textContent = '已保存: ' + currentFileName;
+  // 更新项目标题（去掉扩展名）
+  var projName = currentFileName.replace(/\.[^.]+$/, '');
+  document.getElementById('projectTitle').textContent = projName;
 }
 
 function saveAsParams() {
@@ -771,6 +865,8 @@ function saveAsParams() {
   a.download = currentFileName;
   a.click();
   document.getElementById('fileStatus').textContent = '已另存: ' + currentFileName;
+  var projName = currentFileName.replace(/\.[^.]+$/, '');
+  document.getElementById('projectTitle').textContent = projName;
 }
 
 function openParams(input) {
@@ -812,6 +908,8 @@ function openParams(input) {
     });
     currentFileName = file.name;
     document.getElementById('fileStatus').textContent = '已打开: ' + file.name;
+    var projName = file.name.replace(/\.[^.]+$/, '');
+    document.getElementById('projectTitle').textContent = projName;
     onParamChange();
   };
   reader.readAsText(file, 'UTF-8');
